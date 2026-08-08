@@ -208,6 +208,14 @@ flowchart TD
     HeapNode --> InactiveStore[Inactive Store]
 ```
 
+### Strict Lock Ordering
+
+To prevent deadlocks, the scheduler enforces a strict global lock acquisition order: **Lookup Mutex -> Heap Shard Mutex**.
+
+Because most operations (`Update`, `Remove`, `Release`) receive an application key and must determine the node's `ShardID` before locking the shard, they naturally acquire the Lookup Map first. 
+- **Rule**: A goroutine holding a Heap Shard mutex must **never** attempt to acquire the Lookup Map mutex.
+- **Rule**: A goroutine holding the Lookup Map mutex **may** acquire a Heap Shard mutex.
+
 ## 7. Acquire policy and flows
 
 ### Acquire flow overview

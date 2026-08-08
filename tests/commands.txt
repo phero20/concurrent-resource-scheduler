@@ -1,0 +1,10 @@
+1. The Quick Check (Logic only)
+go test ./...
+
+
+2. The Detailed Check (Logic only, but loud)
+go test -v ./...
+
+
+3. The Heavy Traffic Check (Logic + Concurrency)
+go test -race ./...
