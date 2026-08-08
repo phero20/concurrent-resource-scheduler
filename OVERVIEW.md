@@ -61,16 +61,18 @@ The project enforces highly rigorous development standards to ensure production-
 
 ## 4. Development Phases
 
-The project is executed in 8 strictly sequential phases:
+The project was executed in 4 strictly sequential phases:
 
-- **Phase 1: Contracts and Configuration:** Public APIs, config validation, and error taxonomy.
-- **Phase 2: Heap Subsystem:** Internal priority heap and comparator invariants.
-- **Phase 3: Lookup Subsystem:** Application key to `HeapNode` mapping.
-- **Phase 4: Placement Subsystem:** Acquire Strategy abstraction and Round Robin logic.
-- **Phase 5: Scheduler Coordination:** Composing all components into thread-safe `Add`, `Acquire`, `Release`, `Update`, `Exclude`, `Include`, `Get`, and `Len` operations.
-- **Phase 6: Lifecycle Subsystem:** Implementing `BatchAdd` and safe `Shutdown`.
-- **Phase 7: Statistics Subsystem:** Providing the O(H) `Stats()` snapshot.
-- **Phase 8: Verification & Release:** Black-box testing, stress/race workloads, benchmarks, and v1 baseline establishment.
+- **Phase 1 ✅ Configuration subsystem:** Public APIs, config validation, and error taxonomy.
+- **Phase 2 ✅ Indexed heap subsystem:** Internal priority heap and comparator invariants.
+- **Phase 3 ✅ Lookup subsystem:** Application key to `HeapNode` mapping.
+- **Phase 4 ✅ Scheduler orchestration:** Composing all components into thread-safe operations (`Add`, `BatchAdd`, `Acquire`, `Release`, `Update`, `Exclude`, `Include`, `Get`, `Len`, `Stats`, `Shutdown`), along with rigorous stress and race-test validation.
+
+The remaining post-v1 extensions are planned across the following independent phases:
+
+- **Phase 5 (Deferred) — Advanced Placement Strategies:** Expand placement mechanisms with consistent hashing, weighted selection, adaptive load balancing, and a dedicated sticky selection API.
+- **Phase 6 (Deferred) — Scheduler Hooks & Extension APIs:** Provide lifecycle callbacks and event notifications, allowing applications to build their own cooldowns, circuit breakers, and health managers without leaking business logic into the core scheduler.
+- **Phase 7 (Deferred) — Observability & Metrics:** Expose the scheduler's internal state to industry-standard monitoring systems (e.g., Prometheus) using O(H) stats snapshots.
 
 ---
 

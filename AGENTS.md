@@ -150,18 +150,28 @@ benchmarks/   Focused performance benchmarks
 
 Implementation proceeds only in the order below. Each phase must compile, be independently testable, and satisfy its acceptance criteria before work begins on a later phase. A phase may depend only on artifacts and decisions made in earlier phases.
 
-1. **Contracts and configuration** — define the public API, resource identity, comparator contract, configuration validation, and stable error taxonomy. Do not implement scheduling behavior.
-2. **Heap subsystem** — implement and test only the private indexed priority heap and its comparator-based invariants.
-   - **Phase 2.1 (internal/node)**: Define `HeapNode`, GoDoc, Invariants, and `IsActive` (no behavior).
-   - **Phase 2.2 (internal/heap implementation)**: Define Heap struct, `container/heap` interface (`Swap`, `Less`, `Push`, `Pop`), and `Peek`.
-   - **Phase 2.3 (internal/heap safe wrappers)**: Implement safe wrapper methods `Push()`, `Pop()`, `Fix()`, `Remove()`.
-   - **Phase 2.4 (Unit tests)**: Test ordering, `Swap`, `Fix`, `Remove`, `Push`, `Pop`, and edge cases.
-3. **Lookup subsystem** — implement and test only `KeyFunc`-derived application-key to HeapNode registration and Lookup Map synchronization; do not coordinate scheduling yet.
-4. **Placement subsystem** â€” implement and test the Acquire Strategy abstraction and default Round Robin strategy for Heap Shard placement and selection.
-5. **Scheduler coordination subsystem** â€” compose the completed heap, lookup, and placement subsystems into concurrent `Add`, `Acquire`, `Release`, `Update`, and `Remove` operations with per-shard locking and the Inactive Store.
-6. **Lifecycle subsystem** â€” add and test `BatchAdd` and `Shutdown` with explicit lifecycle and atomicity contracts.
-7. **Statistics subsystem** â€” add immutable scheduler statistics and its low-overhead collection path.
-8. **Verification subsystem** â€” add black-box integration, race stress, and benchmark harnesses; establish the v1 performance baseline and release gate.
+1. **Phase 1 ✅ Configuration subsystem** — define the public API, resource identity, comparator contract, configuration validation, and stable error taxonomy.
+2. **Phase 2 ✅ Indexed heap subsystem** — implement and test only the private indexed priority heap and its comparator-based invariants.
+3. **Phase 3 ✅ Lookup subsystem** — implement and test KeyFunc-derived application-key to HeapNode registration and Lookup Map synchronization.
+4. **Phase 4 ✅ Scheduler orchestration** — compose the completed heap, lookup, and placement subsystems into concurrent operations. This phase encompasses the complete runtime implementation including:
+   - Runtime initialization
+   - Add
+   - BatchAdd
+   - Acquire
+   - Release
+   - Update
+   - Remove
+   - Include
+   - Exclude
+   - Get
+   - Len
+   - Stats
+   - Shutdown
+   - Stress tests
+   - Race-test validation
+5. **Phase 5 (Deferred) — Advanced Placement Strategies** — implement consistent hashing, weighted selection, adaptive load balancing, and a dedicated sticky selection API.
+6. **Phase 6 (Deferred) — Scheduler Hooks & Extension APIs** — implement lifecycle callbacks and event notifications so applications can build custom cooldowns, circuit breakers, and health managers externally.
+7. **Phase 7 (Deferred) — Observability & Metrics** — implement metrics exporters (e.g., Prometheus) to export O(H) stats snapshots.
 
 Do not mix phase responsibilities. If a proposed feature requires a later phase, document the dependency and defer implementation.
 

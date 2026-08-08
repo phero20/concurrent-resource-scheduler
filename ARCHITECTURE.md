@@ -108,9 +108,9 @@ If validation fails at step 2, `New` returns an error immediately. No partial sc
 
 ## 6. Internal structures
 
-### Phase 2: Heap Subsystem (Internal Design)
+### Heap Subsystem (Internal Design)
 
-The Heap Subsystem introduces the internal data structures and heap implementation that later phases will build upon. No scheduler business logic belongs here.
+The Heap Subsystem introduces the internal data structures and heap implementation that the scheduler builds upon. No scheduler business logic belongs here.
 
 #### HeapNode
 
@@ -423,7 +423,7 @@ flowchart TD
 
 ## 13. Future extension points
 
-Future placement strategies may include random, least-loaded, consistent-hash, and custom user strategies through the stable Acquire Strategy boundary. Other deferred extensions include adaptive balancing, sticky selection, and metrics exporters. Any extension must preserve application-owned identity and business state, private HeapNode metadata, bounded locking, and API stability.
+Future placement strategies may include random, least-loaded, consistent-hash, and custom user strategies through the stable Acquire Strategy boundary. Other deferred extensions include adaptive balancing, a dedicated sticky selection API, and metrics exporters. Any extension must preserve application-owned identity and business state, private HeapNode metadata, bounded locking, and API stability.
 
 ## 14. Rejected architectures
 

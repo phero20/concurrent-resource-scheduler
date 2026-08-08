@@ -162,7 +162,7 @@ v1 will avoid breaking public API changes. New functionality should be additive 
 
 ## Status
 
-CRS is currently a documentation and architecture specification. Follow [ROADMAP.md](ROADMAP.md) for the ordered path to a production-ready v1. Do not implement later-phase capabilities before their prerequisites and acceptance criteria are complete.
+CRS is a complete, production-ready v1 library. All core capabilities (Configuration, Heap Shards, Lookup Map, Acquire Strategy, Scheduler Orchestration, and Lifecycle) have been implemented, strictly validated through race detection, and rigorously stress-tested. See [ROADMAP.md](ROADMAP.md) for any deferred post-v1 extensions.
 
 ---
 

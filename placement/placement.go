@@ -23,3 +23,14 @@ type AcquireStrategy interface {
 	// for the scheduler to query.
 	Select(view ShardView) int
 }
+
+// AffinityIdentifier allows any application type to provide its identity
+// for deterministic routing.
+type AffinityIdentifier interface {
+	// AppendAffinityBytes appends the identifier's raw byte representation to dst
+	// and returns the updated slice. It must be deterministic.
+	// The scheduler provides a small stack buffer. Implementations should append
+	// to it when possible, but may allocate if their identifier exceeds the 
+	// provided capacity. The scheduler never retains the returned slice.
+	AppendAffinityBytes(dst []byte) []byte
+}

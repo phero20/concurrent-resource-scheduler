@@ -407,6 +407,34 @@ use(worker)
 
 **Design rationale:** The empty-heap retry loop ensures that a caller is not required to handle the case where a AcquireStrategy happens to select a temporarily empty shard. Skipping empty shards internally keeps the caller free of shard-awareness. The single-shard lock-per-step design preserves the concurrency contract: multiple concurrent Acquire calls can proceed simultaneously on different shards.
 
+### `type placement.AffinityIdentifier interface`
+
+**Purpose:** Allows any application type to provide its identity for deterministic routing.
+
+**Contract:**
+- `AppendAffinityBytes(dst []byte) []byte`: Must append the identifier's raw byte representation to `dst` and return the updated slice.
+- Must be deterministic (same identity must always append the exact same bytes).
+- The scheduler provides a small stack buffer. Implementations should append to it when possible, but may allocate if their identifier exceeds the provided capacity.
+- The scheduler never retains the returned slice.
+
+### `func (s *Scheduler[T, ID]) AcquireByAffinity(key placement.AffinityIdentifier) (resource T, err error)`
+
+**Purpose:** Returns the highest-priority available resource by deterministically routing to a specific Heap Shard based on the provided affinity identifier. It bypasses `AcquireStrategy` entirely and acts as an additive API alongside `Acquire()`.
+
+**Parameters:** `key` is an application-specific affinity identifier implementing the `placement.AffinityIdentifier` interface. The scheduler owns the hashing logic, applying FNV-1a to the bytes without using reflection or `fmt.Sprintf`.
+
+**Return values:** Resource and nil on success; zero `T` and `ErrNoResourceAvailable` when all Heap Shards are empty; zero `T` and error on failure.
+
+**Errors:** `ErrSchedulerClosed`, `ErrNoResourceAvailable`, or `ErrNilAffinityIdentifier`.
+
+**Thread safety:** Safe concurrently. Internal hashing is lock-free.
+
+**Complexity:** O(heaps) worst-case empty-shard traversal plus O(log n) for `Exclusive` heap removal; `Shared` adds only a heap peek after shard selection.
+
+**Operation steps:** Creates a stack-allocated buffer, calls `key.AppendAffinityBytes`, hashes the result, calculates the starting shard index as `hash % uint64(HeapCount)`. If the target shard is empty, it loops over remaining shards to provide fallback behavior.
+
+**Design rationale:** Solves Go's generic method limitations elegantly. By accepting this interface, the scheduler remains completely type-agnostic and maintains backward compatibility (no changes to `Scheduler` type parameters), while achieving deterministic routing. The interface provides a fast path for allocation-free appending without strictly forbidding allocations for massive identifiers.
+
 ### `func (s *Scheduler[T, ID]) Release(key ID) error`
 
 **Purpose:** Returns a previously exclusively acquired resource back to its original Heap Shard. `Release` never chooses a heap, never consults AcquireStrategy, never modifies resource priority, and never rebalances resources. Its only responsibility is restoring an exclusively acquired resource into the scheduler.

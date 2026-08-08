@@ -5,15 +5,11 @@ This roadmap follows the architecture dependency graph, not feature grouping. Ea
 ```mermaid
 flowchart TD
     P1[Phase 1 ✅ Configuration] --> P2[Phase 2 ✅ Heap]
-    P2 --> P3[Phase 3 Lookup]
-    P3 --> P4[Phase 4 Acquire Strategy]
-    P4 --> P5[Phase 5 Scheduler]
-    P5 --> P6[Phase 6 Lifecycle]
-    P6 --> P7[Phase 7 Statistics]
-    P7 --> P8[Phase 8 Testing & Release]
+    P2 --> P3[Phase 3 ✅ Lookup]
+    P3 --> P4[Phase 4 ✅ Scheduler Orchestration]
 ```
 
-## Phase 1 â€” Contracts and configuration subsystem
+## Phase 1 ✅ Contracts and configuration subsystem
 
 ### Objectives
 
@@ -36,7 +32,7 @@ flowchart TD
 - Contract documentation distinguishes independent Comparator, Acquire Strategy, and AcquirePolicy responsibilities. Acquire Strategy is documented as Acquire-only; internal Round Robin insertion strategy governs shard assignment for `Add` and `BatchAdd`.
 - No heap, lookup, selector, lifecycle, or scheduling coordination implementation exists.
 
-## Phase 2 â€” Indexed heap subsystem
+## Phase 2 ✅ Indexed heap subsystem
 
 ### Objectives
 
@@ -54,7 +50,7 @@ flowchart TD
 - The package has no lookup map, round robin, scheduler facade, lifecycle, or domain policy.
 - `go test ./...` passes.
 
-## Phase 3 â€” Lookup subsystem
+## Phase 3 ✅ Lookup subsystem
 
 ### Objectives
 
@@ -72,115 +68,246 @@ flowchart TD
 - Its API supports the documented add/update/remove coordination protocol without exposing internals to callers.
 - `go test ./...` and `go test -race ./...` pass.
 
-## Phase 4 â€” Acquire Strategy subsystem
-
-### Objectives
-
-- Implement the generic Acquire Strategy abstraction and the default thread-safe Round Robin strategy for `Acquire`-shard selection.
-
-### Deliverables
-
-- `placement` package with the strategy contract, read-only placement view, and overflow-safe private Round Robin implementation.
-- Deterministic sequential and concurrent Round Robin distribution tests.
-
-### Acceptance criteria
-
-- Every strategy result is validated in `[0, heapCount)`.
-- Round Robin cycles fairly; custom strategies receive no HeapNode, lock, or mutable Heap Shard access.
-- The package has no priority comparator, heap mutation, Lookup Map, or scheduler lifecycle logic.
-- `go test ./...` and `go test -race ./...` pass.
-
-## Phase 5 â€” Scheduler coordination subsystem
+## Phase 4 ✅ Scheduler orchestration
 
 ### Objectives
 
 - Compose the completed heap, lookup, and placement packages into concurrent core scheduling operations.
+- Implement the generic Acquire Strategy abstraction and the default thread-safe Round Robin strategy for `Acquire`-shard selection.
+- Add lifecycle operations and immutable scheduler statistics.
+- Establish the repeatable verification assets required to declare the composed v1 scheduler production-ready.
 
 ### Deliverables
 
-- `scheduler` implementation of `Add`, `BatchAdd`, `Acquire`, `Release`, `Exclude`, `Include`, `Update`, `Remove`, `Get`, and `Len`.
-- One mutex per Heap Shard, an Inactive Store, and the documented Lookup Map/HeapNode lock protocol.
-- Cross-package tests for placement, global priority with one heap, shard-local priority with multiple Heap Shards, shared/exclusive acquire, release, lookup consistency, and concurrent add/update/remove.
+- Runtime initialization
+- Add
+- BatchAdd
+- Acquire
+- Release
+- Update
+- Remove
+- Include
+- Exclude
+- Get
+- Len
+- Stats
+- Shutdown
+- Stress tests
+- Race-test validation
 
 ### Acceptance criteria
 
 - Normal operations hold no more than one heap mutex and never use a global heap lock.
 - `Acquire` uses one global heap when `HeapCount = 1`; with multiple Heap Shards it asks AcquireStrategy for the next candidate shard, locks only that shard, and checks whether it is non-empty. If empty, it unlocks and asks AcquireStrategy for the next candidate, repeating until a non-empty shard is found or every shard has been inspected. When all shards are empty, `Acquire` returns `ErrNoResourceAvailable`.
 - `Acquire` locks only the single selected shard per iteration; multiple concurrent `Acquire` calls may operate on different shards simultaneously.
-- `Acquire` never modifies resource priority, never rebalances heaps, and never recalculates comparator ordering. It trusts existing heap order; the application must call `Update` to restore order when priority state changes.
-- AcquireStrategy selects the next candidate shard only; it does not determine whether a shard is usable. The scheduler makes that determination after locking.
+- `Acquire` never modifies resource priority, never rebalances heaps, and never recalculates comparator ordering.
 - `Add` and `BatchAdd` assign resources to shards through the internal Round Robin insertion strategy, not through AcquireStrategy. `Shared` leaves a resource active; `Exclusive` moves it to the Inactive Store until `Release`. `Exclude` moves an ACTIVE resource to the Inactive Store until `Include`.
-- `Update` accepts the replacement resource; the scheduler derives the key by calling `KeyFunc(resource)`. Resource identity is immutable: `Update` never changes the key of a registered resource. A nil resource returns `ErrNilResource`; an unregistered key returns `ErrNotFound`.
-- For ACTIVE resources, `Update` replaces the stored value and calls `heap.Fix()` to restore comparator-defined ordering without remove/reinsert and without creating a new HeapNode. For INACTIVE resources (in the Inactive Store), `Update` replaces the stored value only; no heap operation is performed and no shard is locked. The updated value is reinserted with correct ordering when `Release` or `Include` is called.
 - `Update` never consults AcquireStrategy and never moves a resource between heaps. It locks only the owning shard (ACTIVE path) or the Inactive Store (INACTIVE path); it never holds multiple shard locks.
-- Failed `Update` leaves the original resource value, heap ordering, and Inactive Store state unchanged.
-- `Remove` accepts only the application key; no resource object is accepted. It permanently unregisters a resource from either runtime location and removes its Lookup Map entry.
-- For ACTIVE resources, `Remove` locks only the owning Heap Shard and removes the HeapNode by its stored index; no Comparator is called. For INACTIVE resources (in the Inactive Store), `Remove` uses only the Inactive Store's synchronization; no shard is locked and no Comparator is called.
-- `Remove` behaves identically regardless of `AcquirePolicy`. It never consults AcquireStrategy and never locks every shard simultaneously.
-- Failed `Remove` leaves heap membership, Inactive Store membership, and the Lookup Map entry all consistent and unchanged.
-- Failed mutations leave heap membership, heap index, and lookup invariants true.
-- `go test ./...` and `go test -race ./...` pass.
-
-## Phase 6 â€” Lifecycle subsystem
-
-### Objectives
-
-- Add lifecycle operations without introducing resource business policy.
-
-### Deliverables
-
-- Initialization-only `BatchAdd` with atomic validation-and-publication semantics.
-- `Shutdown` with an explicit, concurrent-safe lifecycle contract.
-- Lifecycle-focused integration tests.
-
-### Acceptance criteria
-
-- `BatchAdd` is accepted only before normal scheduler operation; a failed batch publishes no member of its batch.
-- `BatchAdd` validates the entire batch before modifying any scheduler state: nil elements return `ErrNilResource`, intra-batch duplicate keys return `ErrDuplicateKey`, and keys already registered in the scheduler return `ErrDuplicateKey`. Phase 2 (insertion) begins only when Phase 1 (validation) passes entirely.
-- `BatchAdd` uses the same per-element identity contract as `Add`: the scheduler calls `KeyFunc(resource)` to derive each key; no separate ID parameter is accepted.
-- `BatchAdd` uses the internal Round Robin insertion strategy for shard assignment; AcquireStrategy is not involved.
-- `BatchAdd` is not documented or implemented as a loop over `Add`; it may apply bulk heap-building optimizations while providing the same observable behavior and error guarantees.
-- `KeyFunc` or `Comparator` panics propagate to the caller; CRS does not recover them.
-- Shutdown has one documented outcome for in-flight and later operations, with no deadlock or partial scheduler mutation.
-- `go test ./...` and `go test -race ./...` pass.
-
-## Phase 7 â€” Statistics subsystem
-
-### Objectives
-
-- Provide low-overhead, immutable scheduler statistics without adding metrics-exporter behavior.
-
-### Deliverables
-
-- `Stats()` implementation returning an O(H) snapshot (`HeapCount`, `TotalResources`, `ActiveResources`, `InactiveResources`, `EmptyHeaps`, `NonEmptyHeaps`, `AcquireStrategy`, `AcquirePolicy`, and `HeapSizes`).
-- Tests for counter correctness, snapshot consistency, and concurrent reads.
-
-### Acceptance criteria
-
+- `Remove` permanently unregisters a resource from either runtime location and removes its Lookup Map entry.
+- `BatchAdd` validates the entire batch before modifying any scheduler state. Phase 2 (insertion) begins only when Phase 1 (validation) passes entirely.
 - Statistics collection does not expose internal structures, lists of resources, or mutate scheduler internals. It executes in O(H) where H is the number of heap shards.
-- Returned statistics cannot mutate scheduler internals.
-- `go test ./...` and `go test -race ./...` pass.
-
-## Phase 8 â€” Verification subsystem and v1 release gate
-
-### Objectives
-
-- Establish the repeatable verification assets required to declare the composed v1 scheduler production-ready.
-
-### Deliverables
-
-- Black-box integration suite, mixed-operation stress suite, race-test workflow, and benchmark suite.
-- Benchmarks for shared/exclusive acquire, release, update, remove, heap counts, resource-pool sizes, allocation behavior, and contention.
-- Performance baseline, API/documentation audit, and release checklist.
-
-### Acceptance criteria
-
 - Full tests and race detector pass consistently.
 - Stress workloads show no deadlocks, invariant failures, or bookkeeping corruption.
-- Benchmark results are reproducible and reviewed for hot-path regressions.
-- README, architecture, roadmap, contribution guide, and agent rules agree on public contracts, phases, complexity, and locking.
-- No deferred extension is included in v1.
 
-## Deferred after v1
+## Phase 5 — Advanced Placement Strategies
 
-Weighted selection, adaptive load balancing, cooldowns, sticky selection, consistent hashing, health-aware adapters, metrics exporters, and pluggable policies remain deferred. Each requires a separate architecture, compatibility, race, and benchmark review after the core scheduler is stable.
+Expand the `AcquireStrategy` ecosystem beyond Round Robin to support advanced distributed systems patterns without altering the core scheduler concurrency model.
+
+### Phase 5.1 — Sticky Selection (Affinity Routing)
+
+#### 1. Goal
+Implement a mechanism that consistently routes requests with the same session affinity key to the same Heap Shard, without polluting the core scheduler with request contexts.
+
+#### 2. Responsibilities
+- Introduce a dedicated, explicit public method `AcquireByAffinity(key placement.AffinityIdentifier)`.
+- Use `placement.AffinityIdentifier` which provides an `AppendAffinityBytes(dst []byte) []byte` contract.
+- Use a deterministic internal hash function (FNV-1a) to map the bytes directly to a shard index `[0, HeapCount)`.
+- Bypass the general `AcquireStrategy` abstraction completely for this method.
+- Make it explicit that the scheduler remains type-agnostic (any custom application struct can implement the interface). The scheduler provides a small stack buffer to avoid allocations where possible.
+
+#### 3. Files/packages involved
+- `scheduler/acquire.go`
+- `scheduler/acquire_test.go`
+
+#### 4. Architectural boundaries
+- **Architectural Correction:** `context.Context`, `any`, and `string` are rejected. The scheduler is a generic primitive and must remain independent of request contexts, HTTP, or RPC concepts. Using `context.Value` or `fmt.Sprintf` on `any` is an anti-pattern that causes allocations.
+- The `Acquire()` method and `AcquireStrategy` interface remain completely untouched (zero arguments). 
+- `AcquireByAffinity(key)` clearly signals targeted routing intent, keeping the general placement ecosystem (`Acquire()`) clean and fully backward compatible (no changes to the `Scheduler[T, ID]` signature).
+- The scheduler does not expose internal shard indices to the caller.
+- The scheduler completely owns hashing and shard selection.
+
+#### 5. Concurrency considerations
+- The internal hashing of the affinity identifier must be lock-free and thread-safe.
+- Reuses the existing single-shard locking and `Shared`/`Exclusive` logic inside the new affinity API.
+
+#### 6. Required unit tests
+- Verify that the same affinity key deterministically selects the same shard.
+- Verify that the new API correctly respects `Shared` and `Exclusive` policies.
+
+#### 7. Required race tests
+- Highly concurrent affinity-based acquire calls across many goroutines.
+
+#### 8. Required benchmarks
+- Measure the overhead of the internal identifier hashing compared to the standard `Acquire()` strategy lookup.
+
+#### 9. Freeze criteria
+- Architecture strictly preserves the generic nature of `Acquire()` and the existing `AcquireStrategy` ecosystem remains unaware of sticky selection.
+
+### Phase 5.2 — Consistent Hashing Strategy
+
+#### 1. Goal
+Provide mathematically deterministic resource selection based on consistent hashing to maximize cache hit rates for specific workloads.
+
+#### 2. Responsibilities
+- Implement a hash ring mapping hash values to shard indices.
+- Handle varying `HeapCount` safely.
+
+#### 3. Files/packages involved
+- `placement/consistent_hash.go`
+- `placement/consistent_hash_test.go`
+
+#### 4. Architectural boundaries
+- Calculates selection entirely via math on the hash input.
+- Does not mutate scheduler state or inspect heap contents.
+
+#### 5. Concurrency considerations
+- The hash ring structure is immutable after initialization and strictly read-only during `Acquire`, requiring no locks.
+
+#### 6. Required unit tests
+- Distribution uniformity checks across shards.
+- Deterministic output verification for specific hash inputs.
+
+#### 7. Required race tests
+- Concurrent accesses to the hash ring calculation logic.
+
+#### 8. Required benchmarks
+- Measure hash function performance and allocation rate.
+
+#### 9. Freeze criteria
+- Zero allocations in the hot path. 
+
+### Phase 5.3 — Weighted Selection Strategy
+
+#### 1. Goal
+Allow shards to receive traffic proportional to an assigned weight capacity.
+
+#### 2. Responsibilities
+- Implement a thread-safe weighted random or weighted round-robin selection algorithm.
+- Accept static weight configurations per shard at initialization.
+
+#### 3. Files/packages involved
+- `placement/weighted.go`
+- `placement/weighted_test.go`
+
+#### 4. Architectural boundaries
+- Selection logic operates purely on initialization weights.
+- Never inspects individual resources to calculate weights.
+
+#### 5. Concurrency considerations
+- Random Number Generators (RNG) used for selection must be safe for concurrent use or use atomic counters for weighted round-robin.
+
+#### 6. Required unit tests
+- Statistical distribution tests over millions of iterations to verify weight compliance.
+
+#### 7. Required race tests
+- High concurrency testing of the RNG or atomic state variables.
+
+#### 8. Required benchmarks
+- Impact of RNG contention or atomic increments at scale.
+
+#### 9. Freeze criteria
+- Contention on the strategy's internal state does not degrade overall `Acquire` throughput.
+
+### Phase 5.4 — Adaptive Load Balancing Strategy
+
+#### 1. Goal
+Dynamically favor less-contended Heap Shards based on lightweight load metrics without introducing global locking.
+
+#### 2. Responsibilities
+- Implement a strategy that uses the existing `ShardView` abstraction to determine which shards are least loaded.
+- Select the next candidate shard probabilistically based on inverse load.
+
+#### 3. Files/packages involved
+- `placement/adaptive.go`
+- `placement/adaptive_test.go`
+
+#### 4. Architectural boundaries
+- **Architectural Correction:** `Stats()` is an O(H) operation that aggregates data across all heaps and does not belong on the O(log n) `Acquire` hot path.
+- The correct boundary for lightweight load information is the `ShardView.ActiveCount(shard)` method, which is already passed to the strategy and provides O(1) shard-local state without cross-heap locking.
+- Must strictly use `ShardView` or strategy-local atomic counters.
+
+#### 5. Concurrency considerations
+- Must not introduce a global scheduler lock.
+- Read operations for load metadata must be entirely lock-free or strictly scoped to the `ShardView` during the `Acquire` hot path.
+
+#### 6. Required unit tests
+- Verify traffic shifts away from heavily loaded shards towards lightly loaded shards.
+
+#### 7. Required race tests
+- Concurrent `Acquire` calls verifying that `ActiveCount` reads do not cause lock inversion or contention.
+
+#### 8. Required benchmarks
+- Measure the impact of load-calculation overhead on `Acquire` latency.
+
+#### 9. Freeze criteria
+- Architecture strictly preserves the O(log n) acquire path and independent heap locking guarantees.
+
+## Phase 6 — Scheduler Hooks & Extension APIs
+
+### Goal
+Provide extension points that allow applications to build advanced resource lifecycle policies without introducing business logic into the scheduler core.
+
+### Responsibilities
+- Define and implement lifecycle callbacks and scheduler hooks (e.g., OnAcquire, OnRelease, OnExclude).
+- Implement event notifications and observer interfaces for state transitions.
+- Ensure that the scheduler remains completely generic and ignorant of why a resource became inactive, what 'healthy' means, or what business policy is being enforced.
+- Empower applications to build their own cooldown managers, health managers, circuit breakers, API key rotation, and service discovery integrations outside of CRS using public APIs.
+
+### Files/packages involved
+- `scheduler/hooks.go`
+- `scheduler/events.go`
+- `extensions/` (reference implementations provided for users)
+
+### Architectural boundaries
+- CRS remains a generic concurrent resource scheduler. It does not implement penalty boxes, cooldowns, or automatic recovery natively.
+- Hooks must execute efficiently and should not perform blocking operations while holding scheduler locks.
+- Observers receive read-only context or event metadata.
+
+### Concurrency considerations
+- Callbacks and hooks must be invoked in a way that respects the decoupled Lookup Map and Heap Shard lock invariants.
+- Observers must not cause lock inversion or deadlocks if they subsequently call back into the scheduler API.
+
+### Tests required
+- Ensure hooks are fired accurately on all state transitions (Add, Acquire, Release, Exclude, Include).
+- Concurrency tests verifying that expensive or blocking hooks do not stall the core scheduler incorrectly if executed asynchronously.
+
+### Freeze criteria
+- External packages can successfully build a working cooldown manager exclusively by using the provided hooks and public APIs.
+
+## Phase 7 — Observability & Metrics
+
+### Goal
+Expose the scheduler's internal state to industry-standard monitoring systems to provide operators with real-time visibility into capacity and contention.
+
+### Responsibilities
+- Implement metrics exporters for systems like Prometheus or OpenTelemetry.
+- Export key metrics: active/inactive resource counts, empty heap contention, and acquire latency.
+
+### Files/packages involved
+- `stats/prometheus.go`
+- `stats/exporter.go`
+
+### Architectural boundaries
+- Exporters must be strictly opt-in and live in separate packages to avoid bloating the core library with third-party dependencies.
+- Collection must use the existing O(H) `Stats()` snapshot mechanism to ensure metrics collection does not stall the scheduler.
+
+### Concurrency considerations
+- Metric scraping must remain lock-free where possible and never block `Acquire` or `Release` hot paths.
+
+### Tests required
+- End-to-end tests validating metric formatting and registration.
+- Load tests running concurrent operations while aggressively scraping metrics.
+
+### Freeze criteria
+- Adding exporters introduces zero measurable overhead to the core scheduling path.
+- Core library dependencies remain minimal.

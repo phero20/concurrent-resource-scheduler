@@ -44,4 +44,7 @@ var (
 
 	// ErrSchedulerClosed is returned by operations (except Stats) after Shutdown() has been called.
 	ErrSchedulerClosed = errors.New("scheduler closed")
+
+	// ErrNilAffinityIdentifier is returned by AcquireByAffinity() when a nil identifier is provided.
+	ErrNilAffinityIdentifier = errors.New("nil affinity identifier")
 )
