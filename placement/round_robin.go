@@ -23,3 +23,8 @@ func (r *roundRobin) Select(shards ShardView) int {
 	idx := atomic.AddUint32(&r.next, 1) - 1
 	return int(idx % uint32(n))
 }
+
+// String returns the stable, user-facing name of the acquire strategy.
+func (r *roundRobin) String() string {
+	return "RoundRobin"
+}

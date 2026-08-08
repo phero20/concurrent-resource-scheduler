@@ -41,4 +41,7 @@ var (
 
 	// ErrNoResourceAvailable is returned by Acquire() when no active resource is available after all Heap Shards have been inspected.
 	ErrNoResourceAvailable = errors.New("no resource available")
+
+	// ErrSchedulerClosed is returned by operations (except Stats) after Shutdown() has been called.
+	ErrSchedulerClosed = errors.New("scheduler closed")
 )

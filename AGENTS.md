@@ -34,7 +34,7 @@ CRS must not acquire application or provider responsibilities. Do not add:
 - Partition resources across multiple heaps to reduce lock contention. Do not replace this with a global scheduler mutex.
 - `HeapCount = 1` provides one global priority heap. With `HeapCount > 1`, CRS uses intentional sharding; resources are distributed across shards internally when added, and the configured Acquire Strategy chooses which shard `Acquire` queries. Shard-local priority is the scalability trade-off.
 - The scheduler must depend only on the Acquire Strategy abstraction, never directly on Round Robin. Round Robin is the default and only built-in strategy in v1.
-- Keep responsibilities independent: Comparator orders resources within a Heap Shard; Acquire Strategy chooses which Heap Shard `Acquire` queries; AcquirePolicy controls Shared versus Exclusive acquire behavior. Internal balanced distribution (not configurable) assigns newly added resources to shards.
+- Keep responsibilities independent: Comparator orders resources within a Heap Shard; Acquire Strategy chooses which Heap Shard `Acquire` queries; AcquirePolicy controls Shared versus Exclusive acquire behavior. internal Round Robin insertion strategy (not configurable) assigns newly added resources to shards.
 - Use application-owned identity through `KeyFunc(T) ID`; never generate, persist, or expose scheduler IDs.
 - Keep the Lookup Map internal and map application keys to internal `HeapNode` pointers. Heap/shard IDs and heap indexes are runtime-only metadata.
 - Maintain only ACTIVE Heap Shards and one Inactive Store. Never define scheduler business statuses or interpret why a resource is inactive.

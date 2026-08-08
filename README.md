@@ -41,14 +41,14 @@ flowchart TD
     Inactive --> HeapNode
 ```
 
-- Resources in the **ACTIVE** runtime location are partitioned across independently locked Heap Shards. When resources are added, the scheduler assigns them to shards through an internal balanced distribution that is not configurable.
+- Resources in the **ACTIVE** runtime location are partitioned across independently locked Heap Shards. When resources are added, the scheduler assigns them to shards through an internal Round Robin insertion strategy that is not configurable.
 - `HeapCount = 1` provides one global priority heap. `HeapCount > 1` provides intentional sharding; the configured Acquire Strategy is consulted only during `Acquire` to choose which shard to query.
 - Round Robin is the default and only built-in Acquire Strategy in v1. Future strategies may include random, least-loaded, consistent-hash, or custom application strategies without scheduler-core changes.
 - The application supplies `KeyFunc(T) ID`; CRS never generates or persists resource IDs.
 - The Lookup Map maps an application key to its internal `HeapNode`. Heap/shard IDs and heap indexes are runtime-only internal metadata.
 - An **Inactive Store** holds resources temporarily removed from scheduling. CRS does not interpret why a resource is inactive.
 - `AcquirePolicy` is immutable: `Shared` leaves acquired resources active; `Exclusive` moves them to the Inactive Store until `Release` restores them to their original Heap Shard.
-- Responsibilities are independent: Comparator orders resources within a Heap Shard; Acquire Strategy chooses which Heap Shard `Acquire` queries; AcquirePolicy controls Shared versus Exclusive acquire behavior. Internal balanced distribution (not configurable) assigns newly added resources to shards.
+- Responsibilities are independent: Comparator orders resources within a Heap Shard; Acquire Strategy chooses which Heap Shard `Acquire` queries; AcquirePolicy controls Shared versus Exclusive acquire behavior. internal Round Robin insertion strategy (not configurable) assigns newly added resources to shards.
 - Scheduler locks protect only scheduler bookkeeping. Application work must remain outside them.
 - CRS does not synchronize caller-owned resource fields. Callers must make every comparator-visible field safe to read while the resource is registered.
 - Comparators must define a strict weak ordering and be deterministic, thread-safe, pure, fast, non-blocking, and unable to re-enter CRS. Comparator panics propagate; CRS does not recover them.

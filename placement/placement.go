@@ -15,6 +15,9 @@ type ShardView interface {
 // - never inspects resources,
 // - never modifies scheduler state,
 // - never performs priority selection.
+//
+// Implementations may optionally implement fmt.Stringer to provide a custom,
+// stable name for the strategy in scheduler Stats.
 type AcquireStrategy interface {
 	// Select receives a read-only shard view and returns a zero-based Heap Shard index
 	// for the scheduler to query.

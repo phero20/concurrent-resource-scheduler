@@ -127,7 +127,7 @@ type myPlacement struct{}
 func (myPlacement) Acquire(shards scheduler.ShardView) int { return 0 }
 ```
 
-**Design rationale:** Scheduler core asks this abstraction only for the next candidate shard to inspect during `Acquire`. The strategy does not know whether a shard is empty, inspect heap contents, evaluate resource priority, or observe any other scheduler state. It only selects the next candidate. The scheduler is responsible for determining whether the returned shard is usable. Shard assignment for `Add` and `BatchAdd` is handled by the scheduler's internal balanced distribution and is not part of this interface. The scheduler has no dependency on Round Robin and can support custom or future built-in policies.
+**Design rationale:** Scheduler core asks this abstraction only for the next candidate shard to inspect during `Acquire`. The strategy does not know whether a shard is empty, inspect heap contents, evaluate resource priority, or observe any other scheduler state. It only selects the next candidate. The scheduler is responsible for determining whether the returned shard is usable. Shard assignment for `Add` and `BatchAdd` is handled by the scheduler's internal Round Robin insertion strategy and is not part of this interface. The scheduler has no dependency on Round Robin and can support custom or future built-in policies.
 
 ### `const Shared AcquirePolicy` and `const Exclusive AcquirePolicy`
 
@@ -319,7 +319,7 @@ If configuration validation fails at step 2, `New` returns an error immediately.
 
 *Phase 2 â€” Atomic insertion (only reached if Phase 1 passes entirely):*
 
-5. **Shard assignment.** Assign each resource to a target Heap Shard through the scheduler's internal balanced distribution. AcquireStrategy is not consulted.
+5. **Shard assignment.** Assign each resource to a target Heap Shard through the scheduler's internal Round Robin insertion strategy. AcquireStrategy is not consulted.
 6. **HeapNode creation and insertion.** Create an internal HeapNode for each resource, register it in the Lookup Map, and push it into its assigned Heap Shard.
 7. **Completion.** Return nil. All resources are now ACTIVE.
 
@@ -352,7 +352,7 @@ If configuration validation fails at step 2, `New` returns an error immediately.
 1. **Nil check.** If the resource is nil (when `T` is a pointer type), return `ErrNilResource` immediately. No scheduler state is read or modified.
 2. **Key derivation.** Call `KeyFunc(resource)` to obtain the unique application key. If `KeyFunc` panics, the panic propagates to the caller; CRS does not recover it. No scheduler state is modified before this point.
 3. **Duplicate detection.** Check the Lookup Map. If the key is already registered in either the ACTIVE or INACTIVE (Inactive Store) location, return `ErrDuplicateKey` immediately. The existing resource is not overwritten and no insertion proceeds.
-4. **Shard selection.** Select the target Heap Shard through the scheduler's internal balanced distribution. This is an implementation detail; it is not driven by AcquireStrategy and is not configurable.
+4. **Shard selection.** Select the target Heap Shard through the scheduler's internal Round Robin insertion strategy. This is an implementation detail; it is not driven by AcquireStrategy and is not configurable.
 5. **Heap insertion.** Create an internal HeapNode, register it in the Lookup Map, and push it into the selected Heap Shard.
 
 **Atomicity.** `Add` is atomic. If any step fails, no HeapNode is inserted, the Lookup Map remains unchanged, and the scheduler state is exactly as it was before the call. A partial insertion never occurs.

@@ -130,3 +130,9 @@ func (h *Heap[T, ID]) Remove(index int) *node.HeapNode[T, ID] {
 	}
 	return containerheap.Remove(&h.data, index).(*node.HeapNode[T, ID])
 }
+
+// Len returns the number of nodes in the heap without taking a lock.
+// The caller must hold the Heap lock if strong consistency is required.
+func (h *Heap[T, ID]) Len() int {
+	return len(h.data.nodes)
+}

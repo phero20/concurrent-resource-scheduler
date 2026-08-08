@@ -33,7 +33,7 @@ flowchart TD
 - `go test ./...` passes.
 - Invalid configuration and public contract boundaries have focused tests.
 - Comparator constraints include strict weak ordering, purity, bounded and non-blocking execution, thread safety, no scheduler re-entry, panic propagation, and race-safe caller-owned priority state.
-- Contract documentation distinguishes independent Comparator, Acquire Strategy, and AcquirePolicy responsibilities. Acquire Strategy is documented as Acquire-only; internal balanced distribution governs shard assignment for `Add` and `BatchAdd`.
+- Contract documentation distinguishes independent Comparator, Acquire Strategy, and AcquirePolicy responsibilities. Acquire Strategy is documented as Acquire-only; internal Round Robin insertion strategy governs shard assignment for `Add` and `BatchAdd`.
 - No heap, lookup, selector, lifecycle, or scheduling coordination implementation exists.
 
 ## Phase 2 â€” Indexed heap subsystem
@@ -109,7 +109,7 @@ flowchart TD
 - `Acquire` locks only the single selected shard per iteration; multiple concurrent `Acquire` calls may operate on different shards simultaneously.
 - `Acquire` never modifies resource priority, never rebalances heaps, and never recalculates comparator ordering. It trusts existing heap order; the application must call `Update` to restore order when priority state changes.
 - AcquireStrategy selects the next candidate shard only; it does not determine whether a shard is usable. The scheduler makes that determination after locking.
-- `Add` and `BatchAdd` assign resources to shards through the internal balanced distribution, not through AcquireStrategy. `Shared` leaves a resource active; `Exclusive` moves it to the Inactive Store until `Release`. `Exclude` moves an ACTIVE resource to the Inactive Store until `Include`.
+- `Add` and `BatchAdd` assign resources to shards through the internal Round Robin insertion strategy, not through AcquireStrategy. `Shared` leaves a resource active; `Exclusive` moves it to the Inactive Store until `Release`. `Exclude` moves an ACTIVE resource to the Inactive Store until `Include`.
 - `Update` accepts the replacement resource; the scheduler derives the key by calling `KeyFunc(resource)`. Resource identity is immutable: `Update` never changes the key of a registered resource. A nil resource returns `ErrNilResource`; an unregistered key returns `ErrNotFound`.
 - For ACTIVE resources, `Update` replaces the stored value and calls `heap.Fix()` to restore comparator-defined ordering without remove/reinsert and without creating a new HeapNode. For INACTIVE resources (in the Inactive Store), `Update` replaces the stored value only; no heap operation is performed and no shard is locked. The updated value is reinserted with correct ordering when `Release` or `Include` is called.
 - `Update` never consults AcquireStrategy and never moves a resource between heaps. It locks only the owning shard (ACTIVE path) or the Inactive Store (INACTIVE path); it never holds multiple shard locks.
@@ -138,7 +138,7 @@ flowchart TD
 - `BatchAdd` is accepted only before normal scheduler operation; a failed batch publishes no member of its batch.
 - `BatchAdd` validates the entire batch before modifying any scheduler state: nil elements return `ErrNilResource`, intra-batch duplicate keys return `ErrDuplicateKey`, and keys already registered in the scheduler return `ErrDuplicateKey`. Phase 2 (insertion) begins only when Phase 1 (validation) passes entirely.
 - `BatchAdd` uses the same per-element identity contract as `Add`: the scheduler calls `KeyFunc(resource)` to derive each key; no separate ID parameter is accepted.
-- `BatchAdd` uses the internal balanced distribution for shard assignment; AcquireStrategy is not involved.
+- `BatchAdd` uses the internal Round Robin insertion strategy for shard assignment; AcquireStrategy is not involved.
 - `BatchAdd` is not documented or implemented as a loop over `Add`; it may apply bulk heap-building optimizations while providing the same observable behavior and error guarantees.
 - `KeyFunc` or `Comparator` panics propagate to the caller; CRS does not recover them.
 - Shutdown has one documented outcome for in-flight and later operations, with no deadlock or partial scheduler mutation.

@@ -33,6 +33,26 @@ func (m *Map[T, ID]) Add(key ID, n *node.HeapNode[T, ID]) error {
 	return nil
 }
 
+// BatchAdd registers multiple HeapNodes atomically.
+// It returns ErrDuplicateKey if any key is already registered, leaving the map unchanged.
+func (m *Map[T, ID]) BatchAdd(nodes map[ID]*node.HeapNode[T, ID]) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Phase 1: Validate all
+	for k := range nodes {
+		if _, exists := m.nodes[k]; exists {
+			return errors.ErrDuplicateKey
+		}
+	}
+
+	// Phase 2: Insert all
+	for k, n := range nodes {
+		m.nodes[k] = n
+	}
+	return nil
+}
+
 // Get returns the registered HeapNode for the given key, or nil if not found.
 func (m *Map[T, ID]) Get(key ID) *node.HeapNode[T, ID] {
 	m.mu.RLock()

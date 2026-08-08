@@ -23,7 +23,7 @@ flowchart TD
 - Use application-owned, stable identity through `KeyFunc(T) ID`; never generate, persist, or expose scheduler IDs.
 - Keep runtime metadata private and reconstruct it at each scheduler startup.
 - Keep normal operations local to one Heap Shard and its short critical section.
-- Keep independent policy responsibilities: Comparator orders resources within a Heap Shard; Acquire Strategy chooses which Heap Shard `Acquire` queries; AcquirePolicy controls Shared versus Exclusive acquire behavior. Internal balanced distribution decides which shard receives a newly added resource and is not configurable.
+- Keep independent policy responsibilities: Comparator orders resources within a Heap Shard; Acquire Strategy chooses which Heap Shard `Acquire` queries; AcquirePolicy controls Shared versus Exclusive acquire behavior. internal Round Robin insertion strategy decides which shard receives a newly added resource and is not configurable.
 - Make `AcquirePolicy` immutable so shared versus exclusive behavior is predictable for the scheduler lifetime.
 
 ## 3. Responsibilities and non-responsibilities
@@ -210,11 +210,11 @@ flowchart TD
 
 ### Strict Lock Ordering
 
-To prevent deadlocks, the scheduler enforces a strict global lock acquisition order: **Lookup Mutex -> Heap Shard Mutex**.
+To prevent deadlocks, the scheduler enforces a strict global lock acquisition rule: **Lookup Mutex and Heap Shard Mutexes are strictly decoupled**.
 
-Because most operations (`Update`, `Remove`, `Release`) receive an application key and must determine the node's `ShardID` before locking the shard, they naturally acquire the Lookup Map first. 
-- **Rule**: A goroutine holding a Heap Shard mutex must **never** attempt to acquire the Lookup Map mutex.
-- **Rule**: A goroutine holding the Lookup Map mutex **may** acquire a Heap Shard mutex.
+Because most operations (`Update`, `Remove`, `Release`) receive an application key and must determine the node's `ShardID` before locking the shard, they naturally query the Lookup Map first. 
+- **Rule**: The Lookup Map mutex and Heap Shard mutex are strictly decoupled and never held simultaneously.
+- **Rule**: A goroutine must never attempt to acquire the Lookup Map mutex while holding a Heap Shard mutex, and vice versa.
 
 ## 7. Acquire policy and flows
 
@@ -260,12 +260,12 @@ flowchart TD
 
 ### Add, Update, Remove, Exclude, and Include
 
-`Add` creates an internal HeapNode for a single resource. Before modifying any state it (1) rejects nil resources, (2) calls `KeyFunc` to derive the application key, (3) checks the Lookup Map for a duplicate, and (4) selects a target Heap Shard through the scheduler's internal balanced distribution. If any step fails the scheduler state is unchanged. Insertion is atomic.
+`Add` creates an internal HeapNode for a single resource. Before modifying any state it (1) rejects nil resources, (2) calls `KeyFunc` to derive the application key, (3) checks the Lookup Map for a duplicate, and (4) selects a target Heap Shard through the scheduler's internal Round Robin insertion strategy. If any step fails the scheduler state is unchanged. Insertion is atomic.
 
 `BatchAdd` is initialization-only and inserts a collection of resources atomically. It operates in two strictly ordered phases:
 
 - **Phase 1 (full validation, no state changes):** Reject any nil element, call `KeyFunc` for every element, detect duplicates within the incoming slice itself, then check every derived key against the existing Lookup Map. If any check fails, the scheduler state remains exactly as it was before the call.
-- **Phase 2 (insertion, only reached if Phase 1 passes entirely):** Assign each resource to a Heap Shard via the scheduler's internal balanced distribution, create and push each HeapNode, and register it in the Lookup Map.
+- **Phase 2 (insertion, only reached if Phase 1 passes entirely):** Assign each resource to a Heap Shard via the scheduler's internal Round Robin insertion strategy, create and push each HeapNode, and register it in the Lookup Map.
 
 Neither `Add` nor `BatchAdd` consults AcquireStrategy; shard assignment is an internal implementation detail and is not configurable. `BatchAdd` is not equivalent to calling `Add` in a loop; its implementation may apply bulk heap-building optimizations, but its observable behavior and error guarantees are the same as `Add`.
 
@@ -326,7 +326,7 @@ flowchart TD
 
 Acquire Strategy has exactly one responsibility during `Acquire`: select the next candidate Heap Shard for the scheduler to inspect. It does not know whether a shard is empty, inspect heap contents, evaluate resource priority, or observe any other scheduler state. The scheduler determines whether the returned shard is usable. If the shard is empty, the scheduler skips it and asks Acquire Strategy for the next candidate.
 
-Shard selection for `Add` and `BatchAdd` is handled internally by the scheduler's balanced distribution logic and is not part of the Acquire Strategy contract.
+Shard selection for `Add` and `BatchAdd` is handled internally by the scheduler's internal Round Robin insertion strategy logic and is not part of the Acquire Strategy contract.
 
 Round Robin is the default and only built-in v1 implementation. Future random, least-loaded, consistent-hash, and custom user strategies can implement the same boundary without modifying scheduler core logic. Strategies must be thread-safe, non-blocking, and unable to re-enter CRS.
 
@@ -371,7 +371,7 @@ flowchart TD
 7. Exclusive acquire or `Exclude` removes a node from scheduling before returning it; `Release` or `Include` reinserts it at most once.
 8. Failed public mutations preserve all preceding invariants.
 9. Runtime shard IDs never appear in the public API or persistent data.
-10. Scheduler core obtains acquire-shard decisions only through Acquire Strategy and validates every returned index. If the selected shard is empty, the scheduler skips it and asks Acquire Strategy for the next candidate; this repeats until a resource is found or all shards have been inspected. Shard assignment for `Add` and `BatchAdd` is determined by the internal balanced distribution, not by Acquire Strategy.
+10. Scheduler core obtains acquire-shard decisions only through Acquire Strategy and validates every returned index. If the selected shard is empty, the scheduler skips it and asks Acquire Strategy for the next candidate; this repeats until a resource is found or all shards have been inspected. Shard assignment for `Add` and `BatchAdd` is determined by the internal Round Robin insertion strategy, not by Acquire Strategy.
 
 ## 11. Complexity
 

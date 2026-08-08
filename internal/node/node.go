@@ -15,6 +15,7 @@ package node
 // 5. ShardID is the permanently assigned Heap Shard for the resource and never changes after allocation.
 // 6. Index is meaningful only while IsActive is true.
 // 7. HeapNodes are internal implementation details and are never exposed through the public API.
+// 8. IsDeleted is a terminal state that is never reset, preventing resurrection.
 type HeapNode[T any, ID comparable] struct {
 	// Value stores the user-provided resource directly.
 	Value T
@@ -34,4 +35,10 @@ type HeapNode[T any, ID comparable] struct {
 	// IsActive indicates whether the node currently belongs to an ACTIVE Heap Shard
 	// (true) or the INACTIVE Store (false). It does not represent application status.
 	IsActive bool
+
+	// IsDeleted indicates the resource has been permanently removed by a Remove() operation.
+	// This terminal flag is set to true under the Heap Shard lock and is never reset.
+	// Scheduler operations check this flag to prevent concurrency races where an executing
+	// Include() or Release() might otherwise resurrect a deleted node.
+	IsDeleted bool
 }
