@@ -301,28 +301,53 @@ The `extensions/cooldown` package works flawlessly, proving that developers have
 
 ## Phase 7 — Observability & Metrics
 
-### Goal
-Expose the scheduler's internal state to industry-standard monitoring systems to provide operators with real-time visibility into capacity and contention.
+**Goal**: Expose the scheduler's internal state to industry-standard monitoring systems to provide operators with real-time visibility into capacity and contention, without introducing hot-path overhead or core dependencies.
 
-### Responsibilities
-- Implement metrics exporters for systems like Prometheus or OpenTelemetry.
-- Export key metrics: active/inactive resource counts, empty heap contention, and acquire latency.
+### Phase 7.1 ✅ Telemetry & Metrics Aggregation
 
-### Files/packages involved
-- `stats/prometheus.go`
-- `stats/exporter.go`
+#### 1. Goal
+Capture and aggregate real-time scheduler state transitions (e.g., acquire throughput, release rates, churn) entirely outside the core scheduler by leveraging the Phase 6 Event system.
 
-### Architectural boundaries
-- Exporters must be strictly opt-in and live in separate packages to avoid bloating the core library with third-party dependencies.
-- Collection must use the existing O(H) `Stats()` snapshot mechanism to ensure metrics collection does not stall the scheduler.
+#### 2. Public APIs
+- New package: `extensions/metrics`
+- `type TelemetryObserver struct` (implements `events.Observer[ID]`)
+- `func NewTelemetryObserver[ID comparable]() *TelemetryObserver`
+- `func (o *TelemetryObserver) Snapshot() TelemetryStats`
+- `type TelemetryStats struct` (containing throughput counters for Acquired, Released, Added, Excluded, etc.)
 
-### Concurrency considerations
-- Metric scraping must remain lock-free where possible and never block `Acquire` or `Release` hot paths.
+#### 3. Internal Architectural Changes
+- **None.** The core scheduler remains untouched. This utilizes the existing observer hooks.
 
-### Tests required
-- End-to-end tests validating metric formatting and registration.
-- Load tests running concurrent operations while aggressively scraping metrics.
+#### 4. Concurrency considerations
+- The `TelemetryObserver` must use `sync/atomic` counters exclusively to aggregate event totals.
+- It must **never** block or use mutexes in its `OnEvent` implementation, ensuring the scheduler's background dispatcher remains blazing fast.
 
-### Freeze criteria
-- Adding exporters introduces zero measurable overhead to the core scheduling path.
-- Core library dependencies remain minimal.
+#### 5. Testing requirements
+- Validate that `TelemetryObserver` accurately increments the correct atomic counters for every `EventType`.
+- Run race detector tests to ensure `Snapshot()` can be safely called concurrently while the dispatcher is actively pumping events into the observer.
+
+#### 6. Freeze criteria
+The `TelemetryObserver` provides a 100% thread-safe, lock-free aggregation of operational throughput without any core scheduler modifications.
+
+### Phase 7.2 — Metrics Exporters
+
+#### 1. Goal
+Provide a production-ready reference integration bridging both the point-in-time O(H) `scheduler.Stats()` and the real-time `TelemetryStats` into ecosystems like Prometheus, without introducing third-party dependencies to the core library.
+
+#### 2. Public APIs
+- New packages: e.g., `extensions/prometheus` (explicitly isolates the dependency from the rest of the library).
+- `func NewCollector[T any, ID comparable](sched *scheduler.Scheduler[T, ID], telemetry *metrics.TelemetryObserver) prometheus.Collector`
+
+#### 3. Internal Architectural Changes
+- **None.**
+
+#### 4. Concurrency considerations
+- Prometheus scrapes occur concurrently and asynchronously.
+- The collector must safely call the thread-safe `sched.Stats()` (which takes short-lived O(1) locks per shard) and `telemetry.Snapshot()` (atomic reads) without deadlocking or starving the hot path.
+
+#### 5. Testing requirements
+- Unit test using `prometheus/client_golang/prometheus/testutil` to verify all exported metrics are formatted accurately.
+- Validate that the collector successfully ignores nil telemetry observers if the application chooses not to track throughput.
+
+#### 6. Freeze criteria
+The exporter cleanly bridges CRS data to Prometheus. Once merged, Phase 7 is fully complete and the Concurrent Resource Scheduler is unequivocally ready for a `v1.0.0` stable release.
