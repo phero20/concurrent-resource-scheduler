@@ -61,7 +61,7 @@ benchmarks/   Focused performance benchmarks
 ```
 
 - Keep package responsibilities narrow; do not place cross-cutting business logic in `scheduler/`.
-- Keep implementation tests next to the package they exercise when that produces clearer coverage; reserve `tests/` for cross-package behavior.
+- ALL test files must be placed inside the `tests/` directory (e.g., `tests/scheduler/`, `tests/placement/`). Never place test files next to the implementation.
 - Add new packages only when they establish a real responsibility boundary, not merely to shorten a file.
 - Avoid `utils`, `common`, or catch-all packages.
 

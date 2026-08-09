@@ -47,7 +47,7 @@ func (s *Scheduler[T, ID]) AcquireByAffinity(key placement.AffinityIdentifier) (
 	_, _ = h.Write(b) // hash/fnv Write never returns an error
 	affinityHash := h.Sum64()
 
-	startShardID := int(affinityHash % uint64(len(s.shards)))
+	startShardID := s.affinityRing.GetShard(affinityHash)
 
 	return s.acquireFromStartShard(startShardID)
 }

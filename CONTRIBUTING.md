@@ -34,6 +34,7 @@ Read [README.md](README.md), [ARCHITECTURE.md](ARCHITECTURE.md), [ROADMAP.md](RO
 
 ## Testing requirements
 
+- ALL test files must be placed inside the `tests/` directory (e.g., `tests/scheduler/`, `tests/placement/`). Never place test files next to the implementation.
 - Add or update focused tests for every behavior change.
 - Cover success, invalid input, duplicate/unknown-resource, empty-state, and lifecycle paths relevant to the change.
 - Protect heap, lookup, and membership invariants with tests.

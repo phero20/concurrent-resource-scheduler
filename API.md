@@ -431,7 +431,7 @@ use(worker)
 
 **Complexity:** O(heaps) worst-case empty-shard traversal plus O(log n) for `Exclusive` heap removal; `Shared` adds only a heap peek after shard selection.
 
-**Operation steps:** Creates a stack-allocated buffer, calls `key.AppendAffinityBytes`, hashes the result, calculates the starting shard index as `hash % uint64(HeapCount)`. If the target shard is empty, it loops over remaining shards to provide fallback behavior.
+**Operation steps:** Creates a stack-allocated buffer, calls `key.AppendAffinityBytes`, hashes the result, calculates the starting shard index using a virtualized Consistent Hash Ring to minimize reshuffling across varying configurations. If the target shard is empty, it loops over remaining shards sequentially to provide fallback behavior.
 
 **Design rationale:** Solves Go's generic method limitations elegantly. By accepting this interface, the scheduler remains completely type-agnostic and maintains backward compatibility (no changes to `Scheduler` type parameters), while achieving deterministic routing. The interface provides a fast path for allocation-free appending without strictly forbidding allocations for massive identifiers.
 

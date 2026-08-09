@@ -152,39 +152,22 @@ Implement a mechanism that consistently routes requests with the same session af
 
 #### 9. Freeze criteria
 - Architecture strictly preserves the generic nature of `Acquire()` and the existing `AcquireStrategy` ecosystem remains unaware of sticky selection.
-
-### Phase 5.2 — Consistent Hashing Strategy
+### Phase 5.2 ✅ Consistent Hashing Affinity Enhancement
 
 #### 1. Goal
-Provide mathematically deterministic resource selection based on consistent hashing to maximize cache hit rates for specific workloads.
+Provide mathematically deterministic resource selection based on consistent hashing to maximize cache hit rates for specific workloads, replacing the naive modulo hashing of Phase 5.1.
 
-#### 2. Responsibilities
-- Implement a hash ring mapping hash values to shard indices.
-- Handle varying `HeapCount` safely.
+#### 2. Architecture Rationale
+True consistent hashing requires a stable routing key (e.g. user ID). Because the standard `AcquireStrategy` interface `Select(view ShardView) int` lacks a routing key, consistent hashing cannot be implemented as a generic `AcquireStrategy`. Attempting to do so by hashing a counter merely creates probabilistic load balancing with no advantage over Round Robin. Therefore, Consistent Hashing is implemented strictly as an internal enhancement to the `AcquireByAffinity` routing path.
 
-#### 3. Files/packages involved
-- `placement/consistent_hash.go`
-- `placement/consistent_hash_test.go`
+#### 3. Execution
+- Implement an internal lock-free `ConsistentHashRing` mapping in the `placement` package.
+- Incorporate this ring securely into the `Scheduler` initialization.
+- Upgrade `AcquireByAffinity` to route `AffinityIdentifier` hashes through the ring instead of `% HeapCount`.
 
-#### 4. Architectural boundaries
-- Calculates selection entirely via math on the hash input.
-- Does not mutate scheduler state or inspect heap contents.
-
-#### 5. Concurrency considerations
-- The hash ring structure is immutable after initialization and strictly read-only during `Acquire`, requiring no locks.
-
-#### 6. Required unit tests
-- Distribution uniformity checks across shards.
-- Deterministic output verification for specific hash inputs.
-
-#### 7. Required race tests
-- Concurrent accesses to the hash ring calculation logic.
-
-#### 8. Required benchmarks
-- Measure hash function performance and allocation rate.
-
-#### 9. Freeze criteria
-- Zero allocations in the hot path. 
+#### 4. Freeze criteria
+- Architecture strictly preserves the generic nature of `Acquire()` and the existing `AcquireStrategy` ecosystem.
+- `ConsistentHashRing` remains an internal data structure, not an `AcquireStrategy`.
 
 ### Phase 5.3 — Weighted Selection Strategy
 

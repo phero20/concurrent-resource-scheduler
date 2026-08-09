@@ -27,6 +27,9 @@ type Scheduler[T any, ID comparable] struct {
 	// registry is the internal Lookup Map. It handles its own read/write synchronization.
 	registry *lookup.Map[T, ID]
 
+	// affinityRing maps affinity identifiers to shards deterministically.
+	affinityRing *placement.ConsistentHashRing
+
 	// insertionIndex drives the internal Round Robin insertion strategy across shards.
 	insertionIndex uint32
 
@@ -85,9 +88,10 @@ func New[T any, ID comparable](cfg config.Config[T, ID]) (*Scheduler[T, ID], err
 	}
 
 	return &Scheduler[T, ID]{
-		cfg:        validatedCfg,
-		shards:     shards,
-		registry:   lookup.New[T, ID](),
-		isNillable: isNillable,
+		cfg:          validatedCfg,
+		shards:       shards,
+		registry:     lookup.New[T, ID](),
+		affinityRing: placement.NewConsistentHashRing(validatedCfg.HeapCount),
+		isNillable:   isNillable,
 	}, nil
 }
