@@ -284,7 +284,7 @@ Wire the internal event dispatcher into the scheduler's actual runtime operation
 #### 4. Freeze criteria
 Every scheduler public method successfully broadcasts its corresponding event to all registered observers precisely *after* committing its state changes.
 
-### Phase 6.4 — Reference Integration (External Cooldown Manager)
+### Phase 6.4 ✅ Reference Integration (External Cooldown Manager)
 
 #### 1. Goal
 Validate the architecture by building a realistic, advanced feature entirely *outside* of the scheduler core, utilizing only the public API and the new Observer hooks.
