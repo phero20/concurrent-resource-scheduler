@@ -201,7 +201,7 @@ Allow shards to receive traffic proportional to an assigned weight capacity.
 #### 9. Freeze criteria
 - Contention on the strategy's internal state does not degrade overall `Acquire` throughput.
 
-### Phase 5.4 — Adaptive Load Balancing Strategy
+### Phase 5.4 ✅ Adaptive Load Balancing Strategy
 
 #### 1. Goal
 Dynamically favor less-contended Heap Shards based on lightweight load metrics without introducing global locking.
