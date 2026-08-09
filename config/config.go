@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/feroz/concurrent-resource-scheduler/errors"
+	"github.com/feroz/concurrent-resource-scheduler/events"
 	"github.com/feroz/concurrent-resource-scheduler/placement"
 )
 
@@ -59,6 +60,8 @@ type Config[T any, ID comparable] struct {
 	AcquirePolicy AcquirePolicy
 	// AcquireStrategy is the optional acquire-shard selection policy.
 	AcquireStrategy placement.AcquireStrategy
+	// Observers receives read-only lifecycle events.
+	Observers []events.Observer[ID]
 }
 
 // Validate applies defaults and validates the configuration according to Phase 1 rules.

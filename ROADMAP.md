@@ -237,35 +237,67 @@ Dynamically favor less-contended Heap Shards based on lightweight load metrics w
 
 ## Phase 6 — Scheduler Hooks & Extension APIs
 
-### Goal
-Provide extension points that allow applications to build advanced resource lifecycle policies without introducing business logic into the scheduler core.
+**Goal**: Transform the scheduler into an extensible event-driven library without embedding business logic. The scheduler remains generic while allowing external packages to react to internal lifecycle events.
 
-### Responsibilities
-- Define and implement lifecycle callbacks and scheduler hooks (e.g., OnAcquire, OnRelease, OnExclude).
-- Implement event notifications and observer interfaces for state transitions.
-- Ensure that the scheduler remains completely generic and ignorant of why a resource became inactive, what 'healthy' means, or what business policy is being enforced.
-- Empower applications to build their own cooldown managers, health managers, circuit breakers, API key rotation, and service discovery integrations outside of CRS using public APIs.
+### Phase 6.1 ✅ Event Taxonomy & Observer Contract
 
-### Files/packages involved
-- `scheduler/hooks.go`
-- `scheduler/events.go`
-- `extensions/` (reference implementations provided for users)
+#### 1. Goal
+Establish the foundational API contract for external components to observe scheduler lifecycle events without executing business logic inside the scheduler.
 
-### Architectural boundaries
-- CRS remains a generic concurrent resource scheduler. It does not implement penalty boxes, cooldowns, or automatic recovery natively.
-- Hooks must execute efficiently and should not perform blocking operations while holding scheduler locks.
-- Observers receive read-only context or event metadata.
+#### 2. New Public APIs
+- `EventType` (Enum: `EventAdd`, `EventAcquire`, `EventRelease`, `EventExclude`, `EventInclude`, `EventRemove`, `EventUpdate`).
+- `Event[ID any]` struct containing the `EventType` and the resource `ID` (passing `ID` instead of the full resource prevents concurrent mutation races, and omitting a Timestamp avoids `time.Now()` hot-path overhead).
+- `Observer[ID any]` interface defining `OnEvent(e Event[ID])`.
+- Update `config.Config` to accept an optional `Observers []Observer[ID]` slice.
 
-### Concurrency considerations
-- Callbacks and hooks must be invoked in a way that respects the decoupled Lookup Map and Heap Shard lock invariants.
-- Observers must not cause lock inversion or deadlocks if they subsequently call back into the scheduler API.
+#### 3. Internal Architectural Changes
+None yet. This phase purely establishes the types and configuration validation.
 
-### Tests required
-- Ensure hooks are fired accurately on all state transitions (Add, Acquire, Release, Exclude, Include).
-- Concurrency tests verifying that expensive or blocking hooks do not stall the core scheduler incorrectly if executed asynchronously.
+#### 4. Freeze criteria
+The `Event` and `Observer` API contract is fully defined, reviewed, and merged without altering any existing runtime behavior.
 
-### Freeze criteria
-- External packages can successfully build a working cooldown manager exclusively by using the provided hooks and public APIs.
+### Phase 6.2 — Asynchronous Non-Blocking Dispatcher
+
+#### 1. Goal
+Implement a high-performance internal dispatch mechanism that routes events to observers without ever blocking the scheduler's hot path or holding scheduler locks.
+
+#### 2. Internal Architectural Changes
+- Introduce a bounded, lock-free ring buffer or buffered channel (`eventStream`) inside the `Scheduler`.
+- Introduce a dedicated background goroutine (`dispatchLoop`) started during `New()` that drains the `eventStream` and executes `Observer.OnEvent()`.
+- **Strict Drop Policy**: `emit()` performs a non-blocking send. If the buffer is full, the event is dropped immediately and silently, and scheduler execution continues without blocking.
+
+#### 3. Freeze criteria
+The internal dispatcher achieves 100% branch coverage for buffer overflows, slow observers, and correct shutdown of the background goroutine.
+
+### Phase 6.3 — Core Lifecycle Instrumentation
+
+#### 1. Goal
+Wire the internal event dispatcher into the scheduler's actual runtime operations to broadcast accurate state transitions.
+
+#### 2. Internal Architectural Changes
+- Instrument `Acquire()`, `Release()`, `Exclude()`, `Include()`, `Add()`, `Update()`, and `Remove()`.
+- Insert the non-blocking `emit(Event)` call into these methods.
+
+#### 3. Concurrency considerations
+- **CRITICAL**: `emit(Event)` must be called **strictly after** the internal `heap.Unlock()` or `lookup.RUnlock()` calls have executed to prevent lock inversions.
+
+#### 4. Freeze criteria
+Every scheduler public method successfully broadcasts its corresponding event to all registered observers precisely *after* committing its state changes.
+
+### Phase 6.4 — Reference Integration (External Cooldown Manager)
+
+#### 1. Goal
+Validate the architecture by building a realistic, advanced feature entirely *outside* of the scheduler core, utilizing only the public API and the new Observer hooks.
+
+#### 2. New Public APIs
+- A new sub-package: `extensions/cooldown`.
+- `NewManager(scheduler, cooldownDuration)` which implements `Observer[ID]`.
+
+#### 3. Internal Architectural Changes
+- **None.** The scheduler remains entirely ignorant of what a "cooldown" is.
+
+#### 4. Freeze criteria
+The `extensions/cooldown` package works flawlessly, proving that developers have all the tools they need to build advanced components without polluting the scheduler.
 
 ## Phase 7 — Observability & Metrics
 
