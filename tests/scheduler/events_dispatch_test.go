@@ -52,11 +52,15 @@ func TestEventDispatcher_DropPolicy(t *testing.T) {
 	// We will send 5000 events. The first will get stuck in the observer.
 	// The next 4096 will fill the channel.
 	// The remaining ~903 should be dropped instantly, proving emit() does not block.
+	// Create an array of strings to avoid string allocation overhead in the timed loop
+	res := make([]string, 5000)
+	for i := 0; i < 5000; i++ {
+		res[i] = "test-id-" + string(rune(i))
+	}
 	
 	start := time.Now()
-	for i := 0; i < 5000; i++ {
-		sched.EmitForTesting(events.EventAcquire, "test-id")
-	}
+	// Use BatchAdd to blast all 5000 events rapidly
+	sched.BatchAdd(res)
 	elapsed := time.Since(start)
 
 	// Since emit is non-blocking, it should finish almost instantly, definitely well under 1 second.
@@ -90,7 +94,7 @@ func TestEventDispatcher_NoObservers(t *testing.T) {
 	}
 	
 	// Should do nothing and not panic or block
-	sched.EmitForTesting(events.EventAcquire, "test-id")
+	sched.Add("test-id")
 	
 	sched.Shutdown()
 }
@@ -109,7 +113,7 @@ func TestEventDispatcher_NilObserver(t *testing.T) {
 	}
 	
 	// Should gracefully skip the nil observer without panicking
-	sched.EmitForTesting(events.EventAcquire, "test-id")
+	sched.Add("test-id")
 	
 	// Allow background loop to process the event
 	time.Sleep(10 * time.Millisecond)

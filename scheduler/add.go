@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 
 	"github.com/feroz/concurrent-resource-scheduler/errors"
+	"github.com/feroz/concurrent-resource-scheduler/events"
 	"github.com/feroz/concurrent-resource-scheduler/internal/node"
 )
 
@@ -38,6 +39,8 @@ func (s *Scheduler[T, ID]) Add(res T) error {
 	s.shards[shardID].Lock()
 	s.shards[shardID].Push(n)
 	s.shards[shardID].Unlock()
+
+	s.emit(events.EventAdd, key)
 
 	return nil
 }
@@ -99,11 +102,15 @@ func (s *Scheduler[T, ID]) BatchAdd(resources []T) error {
 	}
 
 	// 2. Heap Shard requires explicit locking.
-	for _, n := range nodes {
+	for _, res := range resources {
+		key := s.cfg.KeyFunc(res)
+		n := nodes[key]
 		shard := s.shards[n.ShardID]
 		shard.Lock()
 		shard.Push(n)
 		shard.Unlock()
+
+		s.emit(events.EventAdd, n.Key)
 	}
 
 	return nil

@@ -5,6 +5,7 @@ import (
 
 	"github.com/feroz/concurrent-resource-scheduler/config"
 	"github.com/feroz/concurrent-resource-scheduler/errors"
+	"github.com/feroz/concurrent-resource-scheduler/events"
 	"github.com/feroz/concurrent-resource-scheduler/placement"
 )
 
@@ -70,16 +71,22 @@ func (s *Scheduler[T, ID]) acquireFromStartShard(startShardID int) (T, error) {
 		}
 
 		var res T
+		var acquiredID ID
 		if s.cfg.AcquirePolicy == config.Shared {
 			res = n.Value
+			acquiredID = n.Key
 		} else {
 			// Exclusive policy
 			n = shard.Pop()
 			n.IsActive = false // Conceptually in the Inactive Store
 			res = n.Value
+			acquiredID = n.Key
 		}
 
 		shard.Unlock()
+
+		s.emit(events.EventAcquire, acquiredID)
+
 		return res, nil
 	}
 
@@ -106,18 +113,22 @@ func (s *Scheduler[T, ID]) Release(id ID) error {
 	shard := s.shards[n.ShardID]
 
 	shard.Lock()
-	defer shard.Unlock()
 
 	if n.IsDeleted {
+		shard.Unlock()
 		return errors.ErrResourceNotFound
 	}
 
 	if n.IsActive {
+		shard.Unlock()
 		return errors.ErrResourceNotInactive
 	}
 
 	n.IsActive = true
 	shard.Push(n)
+	shard.Unlock()
+
+	s.emit(events.EventRelease, id)
 
 	return nil
 }

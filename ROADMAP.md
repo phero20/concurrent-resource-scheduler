@@ -269,7 +269,7 @@ Implement a high-performance internal dispatch mechanism that routes events to o
 #### 3. Freeze criteria
 The internal dispatcher achieves 100% branch coverage for buffer overflows, slow observers, and correct shutdown of the background goroutine.
 
-### Phase 6.3 — Core Lifecycle Instrumentation
+### Phase 6.3 ✅ Core Lifecycle Instrumentation
 
 #### 1. Goal
 Wire the internal event dispatcher into the scheduler's actual runtime operations to broadcast accurate state transitions.

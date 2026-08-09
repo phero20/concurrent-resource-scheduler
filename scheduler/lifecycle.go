@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"github.com/feroz/concurrent-resource-scheduler/errors"
+	"github.com/feroz/concurrent-resource-scheduler/events"
 )
 
 // Update applies a new value to an existing resource.
@@ -25,9 +26,9 @@ func (s *Scheduler[T, ID]) Update(res T) error {
 	shard := s.shards[n.ShardID]
 
 	shard.Lock()
-	defer shard.Unlock()
 
 	if n.IsDeleted {
+		shard.Unlock()
 		return errors.ErrResourceNotFound
 	}
 
@@ -36,6 +37,10 @@ func (s *Scheduler[T, ID]) Update(res T) error {
 	if n.IsActive {
 		shard.Fix(n.Index)
 	}
+
+	shard.Unlock()
+
+	s.emit(events.EventUpdate, key)
 
 	return nil
 }
@@ -53,18 +58,23 @@ func (s *Scheduler[T, ID]) Exclude(id ID) error {
 
 	shard := s.shards[n.ShardID]
 	shard.Lock()
-	defer shard.Unlock()
 
 	if n.IsDeleted {
+		shard.Unlock()
 		return errors.ErrResourceNotFound
 	}
 
 	if !n.IsActive {
+		shard.Unlock()
 		return errors.ErrResourceNotActive
 	}
 
 	shard.Remove(n.Index)
 	n.IsActive = false
+
+	shard.Unlock()
+
+	s.emit(events.EventExclude, id)
 
 	return nil
 }
@@ -82,18 +92,23 @@ func (s *Scheduler[T, ID]) Include(id ID) error {
 
 	shard := s.shards[n.ShardID]
 	shard.Lock()
-	defer shard.Unlock()
 
 	if n.IsDeleted {
+		shard.Unlock()
 		return errors.ErrResourceNotFound
 	}
 
 	if n.IsActive {
+		shard.Unlock()
 		return errors.ErrResourceNotInactive
 	}
 
 	n.IsActive = true
 	shard.Push(n)
+
+	shard.Unlock()
+
+	s.emit(events.EventInclude, id)
 
 	return nil
 }
@@ -123,6 +138,8 @@ func (s *Scheduler[T, ID]) Remove(id ID) error {
 
 	// Lookup Map handles its own synchronization independently.
 	s.registry.Remove(id)
+
+	s.emit(events.EventRemove, id)
 
 	return nil
 }
