@@ -69,7 +69,7 @@ func TestStats_EmptyHeap(t *testing.T) {
 
 func TestUtil_IsNil_TypedNil(t *testing.T) {
 	sched, _ := scheduler.New(validConfig(1))
-	
+
 	// A typed nil pointer passed as an interface is a classic Go gotcha.
 	// The internal isNil handles this.
 	var typedNil *Resource = nil

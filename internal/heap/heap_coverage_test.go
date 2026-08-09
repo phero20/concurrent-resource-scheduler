@@ -23,16 +23,16 @@ func dummyComparator(a, b *dummyResource) int {
 
 func TestHeap_Len(t *testing.T) {
 	h := heap.New[*dummyResource, int](dummyComparator)
-	
+
 	if h.Len() != 0 {
 		t.Errorf("Expected length 0 for empty heap, got %d", h.Len())
 	}
-	
+
 	h.Push(&node.HeapNode[*dummyResource, int]{
 		Value: &dummyResource{Priority: 10},
 		Key:   1,
 	})
-	
+
 	if h.Len() != 1 {
 		t.Errorf("Expected length 1 after push, got %d", h.Len())
 	}

@@ -57,7 +57,7 @@ func TestEventDispatcher_DropPolicy(t *testing.T) {
 	for i := 0; i < 5000; i++ {
 		res[i] = "test-id-" + string(rune(i))
 	}
-	
+
 	start := time.Now()
 	// Use BatchAdd to blast all 5000 events rapidly
 	sched.BatchAdd(res)
@@ -70,7 +70,7 @@ func TestEventDispatcher_DropPolicy(t *testing.T) {
 
 	// Unblock the observer so it can finish processing
 	close(obs.blockTrigger)
-	
+
 	// Allow the background goroutine a moment to process the event
 	time.Sleep(10 * time.Millisecond)
 
@@ -92,10 +92,10 @@ func TestEventDispatcher_NoObservers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create scheduler: %v", err)
 	}
-	
+
 	// Should do nothing and not panic or block
 	sched.Add("test-id")
-	
+
 	sched.Shutdown()
 }
 
@@ -111,10 +111,10 @@ func TestEventDispatcher_NilObserver(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create scheduler: %v", err)
 	}
-	
+
 	// Should gracefully skip the nil observer without panicking
 	sched.Add("test-id")
-	
+
 	// Allow background loop to process the event
 	time.Sleep(10 * time.Millisecond)
 

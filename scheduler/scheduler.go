@@ -11,13 +11,19 @@ import (
 	"github.com/feroz/concurrent-resource-scheduler/placement"
 )
 
-// Scheduler is the opaque concurrent scheduler.
+// Scheduler is a highly concurrent, lock-sharded priority queue for generic resources.
+// It orchestrates resource placement across multiple internal Heap Shards using a
+// configurable AcquireStrategy. It enforces thread-safe mutations, atomic state
+// transitions between ACTIVE and INACTIVE states, and zero-blocking telemetry
+// dispatch.
 //
-// Architectural Locking Invariants:
-// - The Lookup package owns its own synchronization.
-// - The Heap package owns its own synchronization.
-// - The Scheduler never manually locks the Lookup Map.
-// - The Scheduler coordinates operations without violating subsystem boundaries.
+// Concurrency Guarantees:
+// All exported methods are completely thread-safe. The scheduler avoids global
+// mutexes in favor of fine-grained per-shard locking and O(1) lock-free maps.
+//
+// Lifecycle:
+// A Scheduler is created via New() and must eventually be stopped via Shutdown()
+// to release background goroutines.
 type Scheduler[T any, ID comparable] struct {
 	// cfg holds the validated, immutable configuration (e.g., HeapCount, KeyFunc).
 	cfg config.Config[T, ID]
@@ -52,10 +58,24 @@ type shardView[T any, ID comparable] struct {
 	s *Scheduler[T, ID]
 }
 
+// ShardCount returns the total number of initialized Heap Shards.
+// It satisfies the placement.ShardView interface for placement strategies.
+//
+// Concurrency Guarantees:
+// This method is lock-free and entirely thread-safe.
+//
+// Complexity: O(1).
 func (v shardView[T, ID]) ShardCount() int {
 	return len(v.s.shards)
 }
 
+// ActiveCount returns the number of active resources in the specified Heap Shard.
+// It satisfies the placement.ShardView interface for placement strategies.
+//
+// Concurrency Guarantees:
+// This method takes a brief read-lock on the target shard, avoiding global contention.
+//
+// Complexity: O(1).
 func (v shardView[T, ID]) ActiveCount(shard int) int {
 	if shard < 0 || shard >= len(v.s.shards) {
 		return 0
@@ -63,7 +83,16 @@ func (v shardView[T, ID]) ActiveCount(shard int) int {
 	return v.s.shards[shard].Len()
 }
 
-// New validates the configuration and creates an empty ready scheduler.
+// New creates, validates, and initializes a new Scheduler instance.
+// It applies default configuration values, validates the constraints (such as
+// positive heap counts and non-nil KeyFunc), allocates the internal shard array,
+// and starts the background event dispatcher goroutine.
+//
+// Complexity:
+// O(H) where H is the number of Heap Shards.
+//
+// Lifecycle:
+// The returned Scheduler must be terminated with Shutdown() to prevent goroutine leaks.
 func New[T any, ID comparable](cfg config.Config[T, ID]) (*Scheduler[T, ID], error) {
 	validatedCfg, err := config.Validate(cfg)
 	if err != nil {

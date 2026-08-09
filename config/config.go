@@ -17,26 +17,33 @@ const (
 // Comparator defines resource priority. A negative result ranks a ahead of b;
 // zero gives no tie-order guarantee; a positive result ranks b ahead.
 //
-// The Comparator must:
-// - define a strict weak ordering,
-// - be deterministic,
-// - be thread-safe,
-// - avoid blocking operations,
-// - avoid scheduler re-entry,
-// - remain consistent for identical inputs.
+// Behavior & Ownership:
+// The caller completely owns the logic. The scheduler uses this function
+// to organize resources internally.
+//
+// Concurrency Guarantees:
+// It MUST be deterministic, thread-safe, and non-blocking. It is invoked
+// while the scheduler holds internal shard locks, so it MUST NEVER call
+// back into the scheduler.
 type Comparator[T any] func(a, b T) int
 
-// KeyFunc returns the application-owned unique key used by the internal Lookup Map.
+// KeyFunc extracts a unique identity from a generic resource.
 //
-// The KeyFunc:
-// - returns the application's unique identifier,
-// - must be deterministic,
-// - must never change for the lifetime of a resource,
-// - is the scheduler's only source of identity.
+// Behavior & Ownership:
+// The caller completely owns resource identity. The scheduler uses this
+// identity to manage the resource's lifecycle across active and inactive states.
+//
+// Concurrency Guarantees:
+// It must be deterministic and pure. It is invoked frequently during O(1)
+// lookups and MUST NOT block.
 type KeyFunc[T any, ID comparable] func(resource T) ID
 
-// AcquirePolicy selects immutable acquire behavior for a scheduler.
-// The zero value defaults to Shared.
+// AcquirePolicy determines whether an acquired resource remains active
+// or becomes exclusively locked.
+//
+// Behavior:
+// Shared leaves the resource active for concurrent acquires. Exclusive moves
+// the resource to the Inactive Store until explicitly released.
 type AcquirePolicy uint8
 
 const (
@@ -47,8 +54,11 @@ const (
 	Exclusive
 )
 
-// Config supplies the complete scheduler configuration.
-// Config becomes immutable after scheduler.New() successfully returns.
+// Config provides the complete configuration required to instantiate a Scheduler.
+//
+// Lifecycle:
+// A Config is strictly validated during scheduler.New(). After the scheduler
+// is created, the configuration becomes immutable and cannot be modified.
 type Config[T any, ID comparable] struct {
 	// HeapCount is the number of Heap Shards. 1 means one global priority heap.
 	HeapCount int
@@ -64,11 +74,13 @@ type Config[T any, ID comparable] struct {
 	Observers []events.Observer[ID]
 }
 
-// Validate applies defaults and validates the configuration according to Phase 1 rules.
-// It performs these steps in order:
-// 1. Apply all default values.
-// 2. Validate every configuration field.
-// 3. Return the normalized Config.
+// Validate applies default values and enforces Phase 1 validation rules on the Config.
+//
+// Behavior:
+// It checks for a valid HeapCount, non-nil Comparator, non-nil KeyFunc,
+// and a recognized AcquirePolicy.
+//
+// Complexity: O(1).
 func Validate[T any, ID comparable](cfg Config[T, ID]) (Config[T, ID], error) {
 	// 1. Apply all default values.
 	if cfg.HeapCount == 0 {

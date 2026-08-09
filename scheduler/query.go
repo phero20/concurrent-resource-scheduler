@@ -8,7 +8,13 @@ import (
 	"github.com/feroz/concurrent-resource-scheduler/stats"
 )
 
-// Get returns the stored resource for the given key without acquiring it.
+// Get retrieves a resource by its unique identifier without altering its state.
+// It returns the resource value regardless of whether it is ACTIVE or INACTIVE.
+//
+// Concurrency Guarantees:
+// Thread-safe and completely lock-free. It uses the concurrent global Lookup Map.
+//
+// Complexity: O(1).
 func (s *Scheduler[T, ID]) Get(id ID) (T, error) {
 	var zero T
 	if s.closed.Load() {
@@ -31,14 +37,27 @@ func (s *Scheduler[T, ID]) Get(id ID) (T, error) {
 	return n.Value, nil
 }
 
-// Len returns the total number of registered resources in O(1) time.
-// It continues to return the correct length even after Shutdown.
+// Len returns the total number of resources registered in the scheduler.
+// This includes both ACTIVE resources and INACTIVE resources.
+//
+// Concurrency Guarantees:
+// Thread-safe and lock-free. It queries the concurrent global Lookup Map.
+//
+// Complexity: O(1).
 func (s *Scheduler[T, ID]) Len() int {
 	return s.registry.Len()
 }
 
-// Stats returns an immutable point-in-time snapshot of scheduler metrics.
-// It calculates the metrics by querying each Heap Shard lock sequentially.
+// Stats returns a point-in-time snapshot of the scheduler's internal metrics.
+// It aggregates data across all Heap Shards and the Inactive Store to provide
+// deep operational visibility.
+//
+// Concurrency Guarantees:
+// Thread-safe. It acquires short-lived read locks on individual shards iteratively,
+// never halting the entire scheduler or starving Acquire operations.
+//
+// Complexity:
+// O(H) where H is the number of Heap Shards.
 func (s *Scheduler[T, ID]) Stats() stats.Stats {
 	var active, empty, nonEmpty int
 	sizes := make([]int, len(s.shards))

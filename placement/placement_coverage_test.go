@@ -30,7 +30,7 @@ func TestPlacement_StringMethods(t *testing.T) {
 
 func TestWeightedStrategy_ZeroShards(t *testing.T) {
 	wt := placement.NewWeightedStrategy([]uint{1, 1})
-	
+
 	shard := wt.Select(mockEmptyShardView{})
 	if shard != 0 {
 		t.Errorf("Expected 0 for empty shard view, got %d", shard)

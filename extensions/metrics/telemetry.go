@@ -6,7 +6,11 @@ import (
 	"github.com/feroz/concurrent-resource-scheduler/events"
 )
 
-// TelemetryStats provides a point-in-time snapshot of the aggregate event throughput.
+// TelemetryStats is a point-in-time snapshot of the accumulated event counters.
+//
+// Behavior:
+// Represents the exact number of operations processed since the telemetry
+// observer was instantiated.
 type TelemetryStats struct {
 	AddCount     uint64
 	AcquireCount uint64
@@ -17,8 +21,14 @@ type TelemetryStats struct {
 	UpdateCount  uint64
 }
 
-// TelemetryObserver is a lock-free event observer that aggregates operational
-// throughput via atomic counters.
+// TelemetryObserver is an events.Observer that tracks high-throughput operation rates.
+//
+// Behavior:
+// It aggregates events into atomic counters without locking.
+//
+// Concurrency Guarantees:
+// 100% lock-free. It uses sync/atomic exclusively to guarantee zero
+// contention on the background dispatcher thread.
 type TelemetryObserver[ID comparable] struct {
 	adds     atomic.Uint64
 	acquires atomic.Uint64
@@ -29,13 +39,19 @@ type TelemetryObserver[ID comparable] struct {
 	updates  atomic.Uint64
 }
 
-// NewTelemetryObserver creates a new TelemetryObserver.
+// NewTelemetryObserver creates a new lock-free metrics aggregator.
+//
+// Lifecycle:
+// Pass this to config.Observers. After the scheduler is running, call Snapshot()
+// to read real-time metrics.
 func NewTelemetryObserver[ID comparable]() *TelemetryObserver[ID] {
 	return &TelemetryObserver[ID]{}
 }
 
-// OnEvent implements the events.Observer contract.
-// It is completely lock-free and updates atomic counters based on the event type.
+// OnEvent intercepts scheduler events and increments the corresponding atomic counter.
+//
+// Concurrency Guarantees:
+// Completely lock-free and non-blocking.
 func (o *TelemetryObserver[ID]) OnEvent(e events.Event[ID]) {
 	switch e.Type {
 	case events.EventAdd:
@@ -55,7 +71,12 @@ func (o *TelemetryObserver[ID]) OnEvent(e events.Event[ID]) {
 	}
 }
 
-// Snapshot returns the current counter values.
+// Snapshot returns a copy of the current atomic counters.
+//
+// Concurrency Guarantees:
+// Lock-free and thread-safe. Can be called at any rate by metrics scrapers (e.g. Prometheus).
+//
+// Complexity: O(1).
 func (o *TelemetryObserver[ID]) Snapshot() TelemetryStats {
 	return TelemetryStats{
 		AddCount:     o.adds.Load(),

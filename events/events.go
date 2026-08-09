@@ -1,6 +1,9 @@
 package events
 
-// EventType defines the lifecycle stage that triggered the event.
+// EventType represents a distinct lifecycle transition within the scheduler.
+//
+// Behavior:
+// Identifies what operation triggered an event (e.g., EventAcquire, EventRelease).
 type EventType int
 
 const (
@@ -13,6 +16,9 @@ const (
 	EventUpdate
 )
 
+// String returns a human-readable representation of the EventType.
+//
+// Complexity: O(1).
 func (t EventType) String() string {
 	switch t {
 	case EventAdd:
@@ -34,17 +40,23 @@ func (t EventType) String() string {
 	}
 }
 
-// Event represents a state transition in the scheduler.
-// It explicitly omits a timestamp to prevent time.Now() overhead on the hot path.
-// The resource ID is passed instead of the full resource to prevent concurrent mutation races.
+// Event describes a single state transition for a specific resource.
+//
+// Behavior:
+// It intentionally omits a timestamp to prevent time.Now() syscall overhead
+// in the scheduler's hot path. It passes the resource ID instead of the full
+// object to avoid concurrent mutation races.
 type Event[ID comparable] struct {
 	Type EventType
 	ID   ID
 }
 
-// Observer defines the contract for external components to receive scheduler events.
-// Implementations MUST NOT block the calling goroutine. In the CRS implementation,
-// they are called via a non-blocking background dispatcher.
+// Observer provides a contract for external components to passively receive events.
+//
+// Concurrency Guarantees:
+// Implementations MUST NOT block. The scheduler invokes OnEvent from a dedicated
+// background goroutine. A blocking observer will cause the internal event ring-buffer
+// to drop events silently to protect scheduler throughput.
 type Observer[ID comparable] interface {
 	OnEvent(e Event[ID])
 }

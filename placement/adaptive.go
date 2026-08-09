@@ -4,20 +4,29 @@ import (
 	"sync/atomic"
 )
 
-// AdaptiveStrategy implements AcquireStrategy using the "Power of Two Choices" (P2C)
-// load balancing algorithm. It probabilistically favors less-contended shards
-// without requiring global state or O(H) locking overhead.
+// AdaptiveStrategy probabilistically favors Heap Shards with fewer active resources.
+//
+// Behavior:
+// It evaluates the load on all shards using the lock-free ActiveCount view
+// and weights selection heavily toward the least contended shards.
+//
+// Concurrency Guarantees:
+// Thread-safe. It does not introduce any global locks.
 type AdaptiveStrategy struct {
 	counter atomic.Uint64
 }
 
-// NewAdaptiveStrategy creates a new lock-free adaptive load balancer.
+// NewAdaptiveStrategy creates a strategy that dynamically balances load.
+//
+// Lifecycle:
+// Provided to config.AcquireStrategy during initialization.
 func NewAdaptiveStrategy() *AdaptiveStrategy {
 	return &AdaptiveStrategy{}
 }
 
-// Select randomly chooses two shards and returns the one with the fewest active resources.
-// It uses a fast, lock-free sequence generator to ensure deterministic mathematical distribution.
+// Select evaluates current shard active counts and returns a candidate shard.
+//
+// Complexity: O(H) where H is the total number of shards.
 func (s *AdaptiveStrategy) Select(view ShardView) int {
 	shardCount := view.ShardCount()
 	if shardCount == 0 {
@@ -36,7 +45,7 @@ func (s *AdaptiveStrategy) Select(view ShardView) int {
 	v2 := uint32(hashVal >> 32)
 
 	shard1 := int(v1 % uint32(shardCount))
-	
+
 	// Map v2 uniformly to the remaining (shardCount - 1) shards
 	shard2 := int(v2 % uint32(shardCount-1))
 	if shard2 >= shard1 {
@@ -50,11 +59,13 @@ func (s *AdaptiveStrategy) Select(view ShardView) int {
 	if count1 < count2 {
 		return shard1
 	}
-	
+
 	return shard2
 }
 
-// String provides a stable name for stats reporting.
+// String identifies the strategy.
+//
+// Complexity: O(1).
 func (s *AdaptiveStrategy) String() string {
 	return "Adaptive"
 }

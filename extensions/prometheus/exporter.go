@@ -7,19 +7,29 @@ import (
 	"github.com/feroz/concurrent-resource-scheduler/stats"
 )
 
-// MetricsProvider defines the minimal interface required by the Collector
-// to snapshot the core scheduler stats.
+// MetricsProvider defines the interface for retrieving core scheduler stats.
+//
+// Behavior:
+// Allows the Collector to snapshot O(H) structural metrics like heap counts.
 type MetricsProvider interface {
 	Stats() stats.Stats
 }
 
-// TelemetryProvider defines the interface to get TelemetryStats
-// without coupling the exporter to the generic resource ID type.
+// TelemetryProvider defines the interface for retrieving O(1) throughput metrics.
+//
+// Behavior:
+// Allows the Collector to retrieve lock-free event counters from the TelemetryObserver.
 type TelemetryProvider interface {
 	Snapshot() metrics.TelemetryStats
 }
 
-// Collector implements prometheus.Collector for the concurrent resource scheduler.
+// Collector is a prometheus.Collector integration for the scheduler.
+//
+// Behavior:
+// It bridges CRS metrics into the Prometheus ecosystem safely.
+//
+// Concurrency Guarantees:
+// Thread-safe. Prometheus scrape calls operate concurrently against the provider's Snapshot.
 type Collector struct {
 	provider  MetricsProvider
 	telemetry TelemetryProvider
@@ -40,8 +50,14 @@ type Collector struct {
 	updates  *prometheus.Desc
 }
 
-// NewCollector creates a new Prometheus Collector that bridges scheduler stats
-// and telemetry throughput counters. The telemetry provider is optional and can be nil.
+// NewCollector constructs a Prometheus Collector.
+//
+// Behavior:
+// The telemetry provider is optional. If nil, throughput metrics (adds, acquires)
+// will not be exported.
+//
+// Lifecycle:
+// The returned Collector must be registered with a prometheus.Registry.
 func NewCollector(provider MetricsProvider, telemetry TelemetryProvider) *Collector {
 	return &Collector{
 		provider:  provider,
@@ -114,8 +130,10 @@ func NewCollector(provider MetricsProvider, telemetry TelemetryProvider) *Collec
 	}
 }
 
-// Describe sends the super-set of all possible descriptors of metrics
-// collected by this Collector.
+// Describe sends all possible metric descriptions to the Prometheus channel.
+//
+// Concurrency Guarantees:
+// Thread-safe as per the prometheus.Collector contract.
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.heapCount
 	ch <- c.totalResources
@@ -133,7 +151,10 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.updates
 }
 
-// Collect is called by the Prometheus registry when collecting metrics.
+// Collect executes the metric gathering and writes to the Prometheus channel.
+//
+// Concurrency Guarantees:
+// Thread-safe. It performs a rapid O(H) stats snapshot and an O(1) atomic telemetry read.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	s := c.provider.Stats()
 

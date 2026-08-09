@@ -49,9 +49,9 @@ func TestAdaptiveStrategy_Distribution(t *testing.T) {
 	// Because it's Power of Two Choices, the least loaded shards (2 and 3) should receive the vast majority of traffic.
 	// Shard 0 (heaviest) should only be selected if BOTH choices land on Shard 0 (1/16 chance).
 	// Shard 1 (medium) should only be selected if choices are (1,1) or (1,0) or (0,1).
-	
+
 	expectedShard0 := float64(numOps) * (1.0 / 16.0)
-	
+
 	if float64(counts[0]) > expectedShard0*1.5 {
 		t.Errorf("Shard 0 received too much traffic: %d (expected ~%v)", counts[0], expectedShard0)
 	}

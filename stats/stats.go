@@ -1,7 +1,11 @@
 package stats
 
-// Stats provides an immutable, point-in-time snapshot of scheduler metrics.
-// It is intended for observability and testing, not for driving application logic.
+// Stats provides a read-only, point-in-time snapshot of scheduler state.
+//
+// Behavior:
+// Represents the aggregated internal bookkeeping (active vs inactive resources,
+// empty vs non-empty shards). It is completely immutable and decoupled from
+// the hot-path telemetry system.
 type Stats struct {
 	// HeapCount is the configured number of Heap Shards.
 	HeapCount int

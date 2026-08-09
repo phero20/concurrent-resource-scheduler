@@ -11,15 +11,22 @@ import (
 // 500 provides a well-balanced distribution with roughly ~4.5% standard deviation.
 const virtualNodesPerShard = 500
 
-// ConsistentHashRing provides a mathematically deterministic mapping
-// from any uint64 hash value to a specific shard index.
-// It is an internal data structure used by placement strategies.
+// ConsistentHashRing maps arbitrary uint64 hashes to stable Heap Shards.
+//
+// Behavior:
+// Utilizes virtual nodes to ensure even distribution and minimizes migration
+// if shard counts hypothetically change.
+//
+// Concurrency Guarantees:
+// Thread-safe. The ring topology is immutable after creation.
 type ConsistentHashRing struct {
 	hashes []uint64
 	shards []int
 }
 
-// NewConsistentHashRing initializes a new read-only hash ring.
+// NewConsistentHashRing constructs a hash ring tailored to the given shard count.
+//
+// Complexity: O(V log V) where V is virtual nodes (fixed ratio to shard count).
 func NewConsistentHashRing(shardCount int) *ConsistentHashRing {
 	if shardCount <= 0 {
 		shardCount = 1
@@ -65,8 +72,9 @@ func NewConsistentHashRing(shardCount int) *ConsistentHashRing {
 	}
 }
 
-// GetShard performs an allocation-free binary search to find the closest
-// virtual node and returns its associated shard index.
+// GetShard performs a binary search to find the closest virtual node on the ring.
+//
+// Complexity: O(log V) where V is the total number of virtual nodes.
 func (r *ConsistentHashRing) GetShard(hash uint64) int {
 	if len(r.hashes) == 0 {
 		return 0

@@ -40,7 +40,7 @@ func (m *mockObserver) OnEvent(e events.Event[string]) {
 
 func TestObserverInterface(t *testing.T) {
 	obs := &mockObserver{}
-	
+
 	e := events.Event[string]{
 		Type: events.EventAcquire,
 		ID:   "res-1",

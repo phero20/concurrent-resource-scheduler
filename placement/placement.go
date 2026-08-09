@@ -1,6 +1,10 @@
 package placement
 
-// ShardView provides a read-only view of available Heap Shards to an Acquire Strategy.
+// ShardView abstracts read-only access to scheduler topology.
+//
+// Behavior:
+// Exposes the number of shards and lock-free active resource counts, allowing
+// strategies to make load-aware decisions without mutating scheduler internals.
 type ShardView interface {
 	// ShardCount returns the number of configured Heap Shards.
 	ShardCount() int
@@ -8,29 +12,29 @@ type ShardView interface {
 	ActiveCount(shard int) int
 }
 
-// AcquireStrategy decides which Heap Shard Acquire should query.
+// AcquireStrategy abstracts the target selection algorithm for Acquire operations.
 //
-// An AcquireStrategy:
-// - selects only the next candidate Heap Shard,
-// - never inspects resources,
-// - never modifies scheduler state,
-// - never performs priority selection.
+// Behavior:
+// The strategy decides *where* the scheduler begins its search for an available resource.
 //
-// Implementations may optionally implement fmt.Stringer to provide a custom,
-// stable name for the strategy in scheduler Stats.
+// Concurrency Guarantees:
+// Implementations MUST be strictly thread-safe and non-blocking.
 type AcquireStrategy interface {
 	// Select receives a read-only shard view and returns a zero-based Heap Shard index
 	// for the scheduler to query.
 	Select(view ShardView) int
 }
 
-// AffinityIdentifier allows any application type to provide its identity
-// for deterministic routing.
+// AffinityIdentifier is implemented by application keys requesting Sticky Sessions.
+//
+// Behavior:
+// Exposes bytes for internal hashing to deterministically route requests to
+// consistent shards via the internal Consistent Hash Ring.
 type AffinityIdentifier interface {
 	// AppendAffinityBytes appends the identifier's raw byte representation to dst
 	// and returns the updated slice. It must be deterministic.
 	// The scheduler provides a small stack buffer. Implementations should append
-	// to it when possible, but may allocate if their identifier exceeds the 
+	// to it when possible, but may allocate if their identifier exceeds the
 	// provided capacity. The scheduler never retains the returned slice.
 	AppendAffinityBytes(dst []byte) []byte
 }

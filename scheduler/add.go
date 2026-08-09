@@ -8,8 +8,16 @@ import (
 	"github.com/feroz/concurrent-resource-scheduler/internal/node"
 )
 
-// Add creates an internal HeapNode for a single resource and inserts it.
-// It assigns the resource to a Heap Shard using the internal Round Robin insertion strategy.
+// Add inserts a single resource into the scheduler.
+// It uses an internal Round Robin algorithm to assign the resource to a target
+// Heap Shard. It returns ErrDuplicateResource if the resource key already exists.
+//
+// Concurrency Guarantees:
+// Thread-safe. The Round Robin atomic counter ensures balanced distribution
+// without locking, and insertion locks only the target shard.
+//
+// Complexity:
+// O(log N) where N is the number of resources in the target shard.
 func (s *Scheduler[T, ID]) Add(res T) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed
@@ -45,11 +53,17 @@ func (s *Scheduler[T, ID]) Add(res T) error {
 	return nil
 }
 
-// BatchAdd performs a bulk resource insertion.
-// It validates all resources and adds them to the Lookup Map atomically, ensuring no partial
-// registry insertions occur if a duplicate is found. Once registered, resources are iteratively
-// pushed to their respective Heap Shards. During this iterative heap insertion, concurrent operations
-// like Len() will include the resources, but Acquire() may not discover them until they enter a shard.
+// BatchAdd atomically validates and inserts multiple resources.
+// It operates in two phases: Phase 1 strictly validates all elements (nil checks,
+// internal batch duplicates, and global registry duplicates) without modifying
+// any state. Phase 2 safely distributes the valid batch across shards.
+//
+// Concurrency Guarantees:
+// Thread-safe. It maintains consistency by locking shards sequentially, avoiding
+// global locks. Partial insertions never occur.
+//
+// Complexity:
+// O(B * log N) where B is batch size and N is resources per shard.
 func (s *Scheduler[T, ID]) BatchAdd(resources []T) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed

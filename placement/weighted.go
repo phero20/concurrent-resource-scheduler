@@ -11,18 +11,24 @@ func mix(z uint64) uint64 {
 	return z ^ (z >> 31)
 }
 
-// WeightedStrategy implements AcquireStrategy to distribute traffic proportionally
-// across shards based on statically configured weights.
-// It uses a lock-free, atomic-driven pseudo-random selection to ensure high throughput.
+// WeightedStrategy distributes traffic proportionally based on static capacities.
+//
+// Behavior:
+// Higher weight shards receive more traffic. It utilizes an internal splitmix64
+// avalanche RNG per selection to maintain statistical distribution.
+//
+// Concurrency Guarantees:
+// Thread-safe. The internal state advances atomically.
 type WeightedStrategy struct {
 	cumulativeWeights []uint64
 	totalWeight       uint64
 	counter           atomic.Uint64
 }
 
-// NewWeightedStrategy creates a strategy that routes traffic according to the provided weights.
-// The weights slice should map 1:1 with the expected ShardCount.
-// If all weights are zero, or if the weights slice is empty, it falls back to uniform distribution.
+// NewWeightedStrategy creates a capacity-aware placement strategy.
+//
+// Behavior:
+// Reverts to RoundRobin if weights are empty or uniform.
 func NewWeightedStrategy(weights []uint) *WeightedStrategy {
 	cumulative := make([]uint64, len(weights))
 	var total uint64
@@ -37,7 +43,9 @@ func NewWeightedStrategy(weights []uint) *WeightedStrategy {
 	}
 }
 
-// Select chooses a shard proportionally based on its configured weight.
+// Select performs an O(log W) binary search over the accumulated weight distribution.
+//
+// Complexity: O(log W) where W is the number of provided weights.
 func (s *WeightedStrategy) Select(view ShardView) int {
 	shardCount := view.ShardCount()
 	if shardCount == 0 {
@@ -75,7 +83,9 @@ func (s *WeightedStrategy) Select(view ShardView) int {
 	return i
 }
 
-// String provides a stable name for stats reporting.
+// String identifies the strategy.
+//
+// Complexity: O(1).
 func (s *WeightedStrategy) String() string {
 	return "Weighted"
 }

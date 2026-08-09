@@ -7,22 +7,36 @@ import (
 	"github.com/feroz/concurrent-resource-scheduler/events"
 )
 
-// LifecycleController defines the minimal scheduler contract required by the CooldownManager.
-// Using this interface prevents the extension from needing to know about the generic resource type T.
+// LifecycleController abstracts the scheduler's manual inclusion/exclusion operations.
+//
+// Behavior:
+// This interface allows the Cooldown Manager to manipulate the Inactive Store
+// without introducing a circular package dependency on the scheduler core.
 type LifecycleController[ID comparable] interface {
 	Exclude(id ID) error
 	Include(id ID) error
 }
 
-// Manager is a reference implementation of an external Observer that applies
-// a time-based cooldown to resources after they are released.
+// Manager is an events.Observer that automatically places released resources
+// into a temporary cooldown state.
+//
+// Behavior:
+// When a resource is released, the Manager intercepts the event, calls Exclude(),
+// and sets a timer to call Include() after the specified duration.
+//
+// Concurrency Guarantees:
+// Thread-safe and non-blocking. It delegates delays to time.AfterFunc.
 type Manager[ID comparable] struct {
 	controller LifecycleController[ID]
 	duration   time.Duration
 	active     sync.Map
 }
 
-// NewManager creates a new CooldownManager.
+// NewManager initializes a Cooldown Manager with the provided controller and duration.
+//
+// Lifecycle:
+// The returned Manager should be registered in the config.Observers slice
+// during scheduler initialization.
 func NewManager[ID comparable](controller LifecycleController[ID], duration time.Duration) *Manager[ID] {
 	return &Manager[ID]{
 		controller: controller,
@@ -30,8 +44,13 @@ func NewManager[ID comparable](controller LifecycleController[ID], duration time
 	}
 }
 
-// OnEvent implements events.Observer.
-// It listens for EventRelease and asynchronously applies a cooldown.
+// OnEvent processes scheduler events asynchronously.
+//
+// Behavior:
+// If the event is EventRelease, it triggers a cooldown for the resource.
+//
+// Concurrency Guarantees:
+// Strictly non-blocking. It fires goroutines for timer callbacks.
 func (m *Manager[ID]) OnEvent(e events.Event[ID]) {
 	// We only apply cooldowns when a resource is returned to the pool.
 	if e.Type != events.EventRelease {

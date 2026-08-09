@@ -11,7 +11,7 @@ type Resource struct {
 	ID string
 }
 
-func defaultKeyFunc(r Resource) string { return r.ID }
+func defaultKeyFunc(r Resource) string    { return r.ID }
 func defaultComparator(a, b Resource) int { return 0 }
 
 func TestValidate(t *testing.T) {
@@ -42,9 +42,9 @@ func TestValidate(t *testing.T) {
 		{
 			name: "default heap count application",
 			cfg: config.Config[Resource, string]{
-				HeapCount:     0,
-				Comparator:    defaultComparator,
-				KeyFunc:       defaultKeyFunc,
+				HeapCount:  0,
+				Comparator: defaultComparator,
+				KeyFunc:    defaultKeyFunc,
 			},
 			wantErr: nil,
 			verifyAfter: func(t *testing.T, c config.Config[Resource, string]) {
@@ -59,36 +59,36 @@ func TestValidate(t *testing.T) {
 		{
 			name: "negative heap count",
 			cfg: config.Config[Resource, string]{
-				HeapCount:     -1,
-				Comparator:    defaultComparator,
-				KeyFunc:       defaultKeyFunc,
+				HeapCount:  -1,
+				Comparator: defaultComparator,
+				KeyFunc:    defaultKeyFunc,
 			},
 			wantErr: errors.ErrInvalidHeapCount,
 		},
 		{
 			name: "exceeds max heap count",
 			cfg: config.Config[Resource, string]{
-				HeapCount:     1025,
-				Comparator:    defaultComparator,
-				KeyFunc:       defaultKeyFunc,
+				HeapCount:  1025,
+				Comparator: defaultComparator,
+				KeyFunc:    defaultKeyFunc,
 			},
 			wantErr: errors.ErrInvalidHeapCount,
 		},
 		{
 			name: "nil comparator",
 			cfg: config.Config[Resource, string]{
-				HeapCount:     1,
-				Comparator:    nil,
-				KeyFunc:       defaultKeyFunc,
+				HeapCount:  1,
+				Comparator: nil,
+				KeyFunc:    defaultKeyFunc,
 			},
 			wantErr: errors.ErrNilComparator,
 		},
 		{
 			name: "nil key func",
 			cfg: config.Config[Resource, string]{
-				HeapCount:     1,
-				Comparator:    defaultComparator,
-				KeyFunc:       nil,
+				HeapCount:  1,
+				Comparator: defaultComparator,
+				KeyFunc:    nil,
 			},
 			wantErr: errors.ErrNilKeyFunc,
 		},

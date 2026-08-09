@@ -9,8 +9,17 @@ import (
 	"github.com/feroz/concurrent-resource-scheduler/placement"
 )
 
-// Acquire returns the highest priority available resource.
-// It is the ONLY operation that uses AcquireStrategy to select a candidate Heap Shard.
+// Acquire retrieves the highest priority resource from the scheduler.
+// It delegates to the configured AcquireStrategy to select a candidate Heap Shard,
+// checking shards sequentially until an available resource is found. If the policy
+// is Exclusive, the resource is atomically moved to the Inactive Store.
+//
+// Concurrency Guarantees:
+// Thread-safe. It only locks one Heap Shard at a time, ensuring massive horizontal
+// scalability without global lock contention.
+//
+// Complexity:
+// O(H) for Shared policy, O(log N + H) for Exclusive policy, where H is HeapCount and N is resources per shard.
 func (s *Scheduler[T, ID]) Acquire() (T, error) {
 	var zero T
 	if s.closed.Load() {
@@ -28,10 +37,16 @@ func (s *Scheduler[T, ID]) Acquire() (T, error) {
 	return s.acquireFromStartShard(startShardID)
 }
 
-// AcquireByAffinity returns the highest priority available resource by deterministically
-// routing to a specific Heap Shard based on the provided affinity identifier.
-// The scheduler internally hashes the bytes to select the target shard.
-// If the selected shard is empty, it falls back to inspecting the remaining shards.
+// AcquireByAffinity retrieves a resource deterministically based on an affinity identifier.
+// It bypasses the global AcquireStrategy, using an internal Consistent Hash Ring
+// to route the request to a specific shard. This is ideal for sticky sessions.
+//
+// Concurrency Guarantees:
+// Thread-safe. The Consistent Hash Ring lookup is lock-free, and only the target
+// Heap Shard is locked during the operation.
+//
+// Complexity:
+// O(log V + log N) where V is the number of virtual nodes and N is resources per shard.
 func (s *Scheduler[T, ID]) AcquireByAffinity(key placement.AffinityIdentifier) (T, error) {
 	var zero T
 	if key == nil {
@@ -93,9 +108,15 @@ func (s *Scheduler[T, ID]) acquireFromStartShard(startShardID int) (T, error) {
 	return zero, errors.ErrNoResourceAvailable
 }
 
-// Release returns an Exclusive resource to its native Heap Shard.
-// It returns an error if the policy is not Exclusive, the key is not found,
-// or the resource is not currently inactive.
+// Release returns a previously exclusively acquired resource back to the scheduler.
+// It restores the resource to its native Heap Shard and makes it ACTIVE again.
+// It returns ErrNotExclusive if the scheduler is not using the Exclusive policy.
+//
+// Concurrency Guarantees:
+// Thread-safe. It performs an O(1) lock-free lookup followed by a single-shard lock.
+//
+// Complexity:
+// O(log N) where N is the number of resources in the target shard.
 func (s *Scheduler[T, ID]) Release(id ID) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed

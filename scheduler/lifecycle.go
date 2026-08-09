@@ -5,9 +5,17 @@ import (
 	"github.com/feroz/concurrent-resource-scheduler/events"
 )
 
-// Update applies a new value to an existing resource.
-// The scheduler orchestrates this operation while respecting the strictly
-// decoupled locking architecture (querying Lookup Map, then independently locking the Heap Shard).
+// Update replaces the value of an existing resource and recalculates its priority.
+// If the resource is ACTIVE, it locks the owning shard and triggers a heap fix to
+// restore the priority queue invariants. If INACTIVE, it safely updates the value
+// in the Inactive Store.
+//
+// Concurrency Guarantees:
+// Thread-safe. It identifies the resource location via O(1) lock-free lookup and
+// strictly takes either the target shard lock or the Inactive Store lock.
+//
+// Complexity:
+// O(log N) for ACTIVE resources, O(1) for INACTIVE resources.
 func (s *Scheduler[T, ID]) Update(res T) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed
@@ -45,7 +53,16 @@ func (s *Scheduler[T, ID]) Update(res T) error {
 	return nil
 }
 
-// Exclude forces an ACTIVE resource to the Inactive Store.
+// Exclude manually moves an ACTIVE resource to the Inactive Store.
+// This is typically used to temporarily remove a faulty resource from circulation
+// (e.g., during a cooldown period).
+//
+// Concurrency Guarantees:
+// Thread-safe. It locks the owning shard, removes the node, and places it into
+// the locked Inactive Store.
+//
+// Complexity:
+// O(log N) where N is the number of resources in the target shard.
 func (s *Scheduler[T, ID]) Exclude(id ID) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed
@@ -79,7 +96,16 @@ func (s *Scheduler[T, ID]) Exclude(id ID) error {
 	return nil
 }
 
-// Include forces an INACTIVE resource to its native heap.
+// Include restores a previously excluded resource back to its ACTIVE state.
+// The resource is returned to its original native Heap Shard and becomes available
+// for acquisition.
+//
+// Concurrency Guarantees:
+// Thread-safe. It atomically moves the node from the Inactive Store into the
+// corresponding locked Heap Shard.
+//
+// Complexity:
+// O(log N) where N is the number of resources in the target shard.
 func (s *Scheduler[T, ID]) Include(id ID) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed
@@ -113,7 +139,16 @@ func (s *Scheduler[T, ID]) Include(id ID) error {
 	return nil
 }
 
-// Remove permanently deletes a resource.
+// Remove permanently deletes a resource from the scheduler.
+// It works seamlessly whether the resource is ACTIVE in a Heap Shard or
+// INACTIVE in the Inactive Store, removing all global lookup references.
+//
+// Concurrency Guarantees:
+// Thread-safe. It locates the node and cleanly locks either the target shard
+// or the Inactive Store to perform the removal.
+//
+// Complexity:
+// O(log N) for ACTIVE resources, O(1) for INACTIVE resources.
 func (s *Scheduler[T, ID]) Remove(id ID) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed

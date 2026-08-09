@@ -7,12 +7,20 @@ type roundRobin struct {
 	next uint32
 }
 
-// NewRoundRobin returns a new built-in Round Robin acquire strategy.
+// NewRoundRobin creates a strategy that cycles through shards sequentially.
+//
+// Behavior:
+// It distributes traffic evenly irrespective of load.
+//
+// Concurrency Guarantees:
+// Thread-safe. It uses a single atomic increment for lock-free advancement.
 func NewRoundRobin() AcquireStrategy {
 	return &roundRobin{}
 }
 
-// Select selects the next candidate Heap Shard using a round-robin approach.
+// Select returns the next sequential shard index.
+//
+// Complexity: O(1).
 func (r *roundRobin) Select(shards ShardView) int {
 	n := shards.ShardCount()
 	// Defensive safeguard: ShardCount is guaranteed to be >= 1 by configuration validation,
@@ -24,7 +32,9 @@ func (r *roundRobin) Select(shards ShardView) int {
 	return int(idx % uint32(n))
 }
 
-// String returns the stable, user-facing name of the acquire strategy.
+// String identifies the strategy.
+//
+// Complexity: O(1).
 func (r *roundRobin) String() string {
 	return "RoundRobin"
 }
