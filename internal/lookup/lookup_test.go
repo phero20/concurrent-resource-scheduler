@@ -59,6 +59,52 @@ func TestLookupDuplicateRejection(t *testing.T) {
 	}
 }
 
+func TestLookupBatchAdd(t *testing.T) {
+	m := lookup.New[string, int]()
+
+	// Pre-populate with one item
+	existing := &node.HeapNode[string, int]{Value: "existing"}
+	_ = m.Add(1, existing)
+
+	// Attempt to BatchAdd a map that contains an existing key
+	batch1 := map[int]*node.HeapNode[string, int]{
+		2: {Value: "new2"},
+		1: {Value: "conflict"},
+		3: {Value: "new3"},
+	}
+
+	err := m.BatchAdd(batch1)
+	if err != errors.ErrDuplicateKey {
+		t.Fatalf("Expected ErrDuplicateKey for BatchAdd with conflicting key, got %v", err)
+	}
+
+	// Verify atomicity (neither 2 nor 3 should be added)
+	if m.Len() != 1 {
+		t.Fatalf("Expected Len() == 1 after failed BatchAdd, got %d", m.Len())
+	}
+	if m.Get(2) != nil || m.Get(3) != nil {
+		t.Fatalf("Expected elements to not be added after failed BatchAdd")
+	}
+
+	// Attempt a successful BatchAdd
+	batch2 := map[int]*node.HeapNode[string, int]{
+		2: {Value: "new2"},
+		3: {Value: "new3"},
+	}
+
+	err = m.BatchAdd(batch2)
+	if err != nil {
+		t.Fatalf("Expected nil error for valid BatchAdd, got %v", err)
+	}
+
+	if m.Len() != 3 {
+		t.Fatalf("Expected Len() == 3 after successful BatchAdd, got %d", m.Len())
+	}
+	if m.Get(2).Value != "new2" || m.Get(3).Value != "new3" {
+		t.Fatalf("Expected BatchAdd items to be present in lookup map")
+	}
+}
+
 func TestLookupRemoveAndLen(t *testing.T) {
 	m := lookup.New[string, int]()
 

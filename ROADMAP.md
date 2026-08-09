@@ -329,7 +329,7 @@ Capture and aggregate real-time scheduler state transitions (e.g., acquire throu
 #### 6. Freeze criteria
 The `TelemetryObserver` provides a 100% thread-safe, lock-free aggregation of operational throughput without any core scheduler modifications.
 
-### Phase 7.2 — Metrics Exporters
+### Phase 7.2 ✅ Metrics Exporters
 
 #### 1. Goal
 Provide a production-ready reference integration bridging both the point-in-time O(H) `scheduler.Stats()` and the real-time `TelemetryStats` into ecosystems like Prometheus, without introducing third-party dependencies to the core library.
