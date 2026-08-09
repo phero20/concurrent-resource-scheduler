@@ -3,8 +3,8 @@ package heap_test
 import (
 	"testing"
 
-	"github.com/feroz/concurrent-resource-scheduler/internal/heap"
-	"github.com/feroz/concurrent-resource-scheduler/internal/node"
+	"github.com/phero20/concurrent-resource-scheduler/internal/heap"
+	"github.com/phero20/concurrent-resource-scheduler/internal/node"
 )
 
 // Define dummy types for the test

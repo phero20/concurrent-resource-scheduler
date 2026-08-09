@@ -3,7 +3,7 @@ package scheduler_test
 import (
 	"testing"
 
-	"github.com/feroz/concurrent-resource-scheduler/scheduler"
+	"github.com/phero20/concurrent-resource-scheduler/scheduler"
 )
 
 func TestNewScheduler(t *testing.T) {

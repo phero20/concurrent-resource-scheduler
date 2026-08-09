@@ -4,11 +4,11 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/feroz/concurrent-resource-scheduler/config"
-	"github.com/feroz/concurrent-resource-scheduler/events"
-	"github.com/feroz/concurrent-resource-scheduler/internal/heap"
-	"github.com/feroz/concurrent-resource-scheduler/internal/lookup"
-	"github.com/feroz/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/config"
+	"github.com/phero20/concurrent-resource-scheduler/events"
+	"github.com/phero20/concurrent-resource-scheduler/internal/heap"
+	"github.com/phero20/concurrent-resource-scheduler/internal/lookup"
+	"github.com/phero20/concurrent-resource-scheduler/placement"
 )
 
 // Scheduler is a highly concurrent, lock-sharded priority queue for generic resources.

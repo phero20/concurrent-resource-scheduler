@@ -1,8 +1,8 @@
 package scheduler
 
 import (
-	"github.com/feroz/concurrent-resource-scheduler/errors"
-	"github.com/feroz/concurrent-resource-scheduler/events"
+	"github.com/phero20/concurrent-resource-scheduler/errors"
+	"github.com/phero20/concurrent-resource-scheduler/events"
 )
 
 // Update replaces the value of an existing resource and recalculates its priority.

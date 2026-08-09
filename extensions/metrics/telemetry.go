@@ -3,7 +3,7 @@ package metrics
 import (
 	"sync/atomic"
 
-	"github.com/feroz/concurrent-resource-scheduler/events"
+	"github.com/phero20/concurrent-resource-scheduler/events"
 )
 
 // TelemetryStats is a point-in-time snapshot of the accumulated event counters.

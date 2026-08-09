@@ -4,8 +4,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/feroz/concurrent-resource-scheduler/internal/heap"
-	"github.com/feroz/concurrent-resource-scheduler/internal/node"
+	"github.com/phero20/concurrent-resource-scheduler/internal/heap"
+	"github.com/phero20/concurrent-resource-scheduler/internal/node"
 )
 
 // A simple integer comparator for testing.

@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/feroz/concurrent-resource-scheduler/config"
-	"github.com/feroz/concurrent-resource-scheduler/scheduler"
+	"github.com/phero20/concurrent-resource-scheduler/config"
+	"github.com/phero20/concurrent-resource-scheduler/scheduler"
 )
 
 func TestScheduler_MixedConcurrentStress(t *testing.T) {

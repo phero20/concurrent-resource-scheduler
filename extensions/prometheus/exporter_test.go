@@ -7,9 +7,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
-	"github.com/feroz/concurrent-resource-scheduler/extensions/metrics"
-	prom "github.com/feroz/concurrent-resource-scheduler/extensions/prometheus"
-	"github.com/feroz/concurrent-resource-scheduler/stats"
+	"github.com/phero20/concurrent-resource-scheduler/extensions/metrics"
+	prom "github.com/phero20/concurrent-resource-scheduler/extensions/prometheus"
+	"github.com/phero20/concurrent-resource-scheduler/stats"
 )
 
 type mockMetricsProvider struct{}

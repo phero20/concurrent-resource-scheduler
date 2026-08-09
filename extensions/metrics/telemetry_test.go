@@ -4,8 +4,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/feroz/concurrent-resource-scheduler/events"
-	"github.com/feroz/concurrent-resource-scheduler/extensions/metrics"
+	"github.com/phero20/concurrent-resource-scheduler/events"
+	"github.com/phero20/concurrent-resource-scheduler/extensions/metrics"
 )
 
 func TestTelemetryObserver_EventCounts(t *testing.T) {

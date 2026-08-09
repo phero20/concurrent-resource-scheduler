@@ -4,8 +4,8 @@ import (
 	containerheap "container/heap"
 	"sync"
 
-	"github.com/feroz/concurrent-resource-scheduler/config"
-	"github.com/feroz/concurrent-resource-scheduler/internal/node"
+	"github.com/phero20/concurrent-resource-scheduler/config"
+	"github.com/phero20/concurrent-resource-scheduler/internal/node"
 )
 
 // heapData implements container/heap.Interface.

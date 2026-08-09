@@ -5,10 +5,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/feroz/concurrent-resource-scheduler/config"
-	"github.com/feroz/concurrent-resource-scheduler/events"
-	"github.com/feroz/concurrent-resource-scheduler/extensions/cooldown"
-	"github.com/feroz/concurrent-resource-scheduler/scheduler"
+	"github.com/phero20/concurrent-resource-scheduler/config"
+	"github.com/phero20/concurrent-resource-scheduler/events"
+	"github.com/phero20/concurrent-resource-scheduler/extensions/cooldown"
+	"github.com/phero20/concurrent-resource-scheduler/scheduler"
 )
 
 type Worker struct {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/feroz/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/placement"
 )
 
 func TestConsistentHashRing_Deterministic(t *testing.T) {

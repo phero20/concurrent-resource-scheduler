@@ -1,8 +1,8 @@
 package scheduler_test
 
 import (
-	"github.com/feroz/concurrent-resource-scheduler/config"
-	"github.com/feroz/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/config"
+	"github.com/phero20/concurrent-resource-scheduler/placement"
 )
 
 type Resource struct {

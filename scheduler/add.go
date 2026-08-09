@@ -3,9 +3,9 @@ package scheduler
 import (
 	"sync/atomic"
 
-	"github.com/feroz/concurrent-resource-scheduler/errors"
-	"github.com/feroz/concurrent-resource-scheduler/events"
-	"github.com/feroz/concurrent-resource-scheduler/internal/node"
+	"github.com/phero20/concurrent-resource-scheduler/errors"
+	"github.com/phero20/concurrent-resource-scheduler/events"
+	"github.com/phero20/concurrent-resource-scheduler/internal/node"
 )
 
 // Add inserts a single resource into the scheduler.

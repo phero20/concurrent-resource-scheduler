@@ -1,9 +1,9 @@
 package config
 
 import (
-	"github.com/feroz/concurrent-resource-scheduler/errors"
-	"github.com/feroz/concurrent-resource-scheduler/events"
-	"github.com/feroz/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/errors"
+	"github.com/phero20/concurrent-resource-scheduler/events"
+	"github.com/phero20/concurrent-resource-scheduler/placement"
 )
 
 const (

@@ -3,7 +3,7 @@ package events_test
 import (
 	"testing"
 
-	"github.com/feroz/concurrent-resource-scheduler/events"
+	"github.com/phero20/concurrent-resource-scheduler/events"
 )
 
 func TestEventTypeString(t *testing.T) {

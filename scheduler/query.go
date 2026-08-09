@@ -3,9 +3,9 @@ package scheduler
 import (
 	"fmt"
 
-	"github.com/feroz/concurrent-resource-scheduler/config"
-	"github.com/feroz/concurrent-resource-scheduler/errors"
-	"github.com/feroz/concurrent-resource-scheduler/stats"
+	"github.com/phero20/concurrent-resource-scheduler/config"
+	"github.com/phero20/concurrent-resource-scheduler/errors"
+	"github.com/phero20/concurrent-resource-scheduler/stats"
 )
 
 // Get retrieves a resource by its unique identifier without altering its state.

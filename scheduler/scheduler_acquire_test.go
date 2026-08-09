@@ -5,9 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/feroz/concurrent-resource-scheduler/config"
-	"github.com/feroz/concurrent-resource-scheduler/errors"
-	"github.com/feroz/concurrent-resource-scheduler/scheduler"
+	"github.com/phero20/concurrent-resource-scheduler/config"
+	"github.com/phero20/concurrent-resource-scheduler/errors"
+	"github.com/phero20/concurrent-resource-scheduler/scheduler"
 )
 
 func TestAcquire_Shared(t *testing.T) {

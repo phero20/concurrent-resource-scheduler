@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/feroz/concurrent-resource-scheduler/config"
-	"github.com/feroz/concurrent-resource-scheduler/scheduler"
+	"github.com/phero20/concurrent-resource-scheduler/config"
+	"github.com/phero20/concurrent-resource-scheduler/scheduler"
 )
 
 // Resource represents a mock application resource (e.g., a worker or proxy).

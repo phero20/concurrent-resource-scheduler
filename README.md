@@ -1,14 +1,14 @@
 # Concurrent Resource Scheduler
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/feroz/concurrent-resource-scheduler.svg)](https://pkg.go.dev/github.com/feroz/concurrent-resource-scheduler)
-[![Go Report Card](https://goreportcard.com/badge/github.com/feroz/concurrent-resource-scheduler)](https://goreportcard.com/report/github.com/feroz/concurrent-resource-scheduler)
+[![Go Reference](https://pkg.go.dev/badge/github.com/phero20/concurrent-resource-scheduler.svg)](https://pkg.go.dev/github.com/phero20/concurrent-resource-scheduler)
+[![Go Report Card](https://goreportcard.com/badge/github.com/phero20/concurrent-resource-scheduler)](https://goreportcard.com/report/github.com/phero20/concurrent-resource-scheduler)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/github/v/release/feroz/concurrent-resource-scheduler)](https://github.com/feroz/concurrent-resource-scheduler/releases)
-[![Coverage Status](https://coveralls.io/repos/github/feroz/concurrent-resource-scheduler/badge.svg?branch=main)](https://coveralls.io/github/feroz/concurrent-resource-scheduler?branch=main)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/feroz/concurrent-resource-scheduler)](https://golang.org/doc/go1.22)
-[![GitHub Stars](https://img.shields.io/github/stars/feroz/concurrent-resource-scheduler?style=social)](https://github.com/feroz/concurrent-resource-scheduler/stargazers)
-[![Downloads](https://img.shields.io/github/downloads/feroz/concurrent-resource-scheduler/total)](https://github.com/feroz/concurrent-resource-scheduler/releases)
-[![Build Status](https://github.com/feroz/concurrent-resource-scheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/feroz/concurrent-resource-scheduler/actions)
+[![Release](https://img.shields.io/github/v/release/phero20/concurrent-resource-scheduler)](https://github.com/phero20/concurrent-resource-scheduler/releases)
+[![Coverage Status](https://coveralls.io/repos/github/phero20/concurrent-resource-scheduler/badge.svg?branch=main)](https://coveralls.io/github/phero20/concurrent-resource-scheduler?branch=main)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/phero20/concurrent-resource-scheduler)](https://golang.org/doc/go1.22)
+[![GitHub Stars](https://img.shields.io/github/stars/phero20/concurrent-resource-scheduler?style=social)](https://github.com/phero20/concurrent-resource-scheduler/stargazers)
+[![Downloads](https://img.shields.io/github/downloads/phero20/concurrent-resource-scheduler/total)](https://github.com/phero20/concurrent-resource-scheduler/releases)
+[![Build Status](https://github.com/phero20/concurrent-resource-scheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/phero20/concurrent-resource-scheduler/actions)
 
 Concurrent Resource Scheduler (CRS) is a high-performance, domain-agnostic Go library for selecting, prioritizing, and maintaining reusable resources under extreme concurrent load. 
 
@@ -183,15 +183,15 @@ flowchart TD
 To use CRS in your Go project, ensure you are running Go 1.18 or higher (Go 1.22+ recommended for optimal performance), as the library heavily relies on type parameters (generics).
 
 ```sh
-go get github.com/feroz/concurrent-resource-scheduler
+go get github.com/phero20/concurrent-resource-scheduler
 ```
 
 ### Module Import
 
 ```go
 import (
-    "github.com/feroz/concurrent-resource-scheduler/config"
-    "github.com/feroz/concurrent-resource-scheduler/scheduler"
+    "github.com/phero20/concurrent-resource-scheduler/config"
+    "github.com/phero20/concurrent-resource-scheduler/scheduler"
 )
 ```
 
@@ -210,8 +210,8 @@ import (
     "fmt"
     "log"
 
-    "github.com/feroz/concurrent-resource-scheduler/config"
-    "github.com/feroz/concurrent-resource-scheduler/scheduler"
+    "github.com/phero20/concurrent-resource-scheduler/config"
+    "github.com/phero20/concurrent-resource-scheduler/scheduler"
 )
 
 type Worker struct {
@@ -637,7 +637,7 @@ Go channels are fantastic for FIFO task distribution, but they are intrinsically
 ## Package Layout
 
 ```text
-github.com/feroz/concurrent-resource-scheduler/
+github.com/phero20/concurrent-resource-scheduler/
 ├── config/       # Structs for initialization and validation
 ├── errors/       # Typed sentinels (ErrNilResource, etc)
 ├── events/       # Observer patterns and asynchronous hooks
@@ -703,8 +703,8 @@ This project is licensed under the MIT License. See the **[LICENSE](LICENSE)** f
 ## Support
 
 If you encounter issues or have feature requests, please use the standard channels:
-- 🐛 **[GitHub Issues](https://github.com/feroz/concurrent-resource-scheduler/issues)** for bug reports.
-- 💬 **[GitHub Discussions](https://github.com/feroz/concurrent-resource-scheduler/discussions)** for architecture help or questions.
+- 🐛 **[GitHub Issues](https://github.com/phero20/concurrent-resource-scheduler/issues)** for bug reports.
+- 💬 **[GitHub Discussions](https://github.com/phero20/concurrent-resource-scheduler/discussions)** for architecture help or questions.
 
 ---
 

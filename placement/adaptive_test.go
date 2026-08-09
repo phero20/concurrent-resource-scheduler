@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/feroz/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/placement"
 )
 
 // adaptiveMockView implements placement.ShardView for testing adaptive load balancing.

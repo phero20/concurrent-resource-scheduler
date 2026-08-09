@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/feroz/concurrent-resource-scheduler/events"
+	"github.com/phero20/concurrent-resource-scheduler/events"
 )
 
 // LifecycleController abstracts the scheduler's manual inclusion/exclusion operations.

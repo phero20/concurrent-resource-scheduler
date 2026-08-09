@@ -3,8 +3,8 @@ package lookup
 import (
 	"sync"
 
-	"github.com/feroz/concurrent-resource-scheduler/errors"
-	"github.com/feroz/concurrent-resource-scheduler/internal/node"
+	"github.com/phero20/concurrent-resource-scheduler/errors"
+	"github.com/phero20/concurrent-resource-scheduler/internal/node"
 )
 
 // Map is a thread-safe registry mapping application keys to their canonical HeapNodes.

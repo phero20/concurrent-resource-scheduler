@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/feroz/concurrent-resource-scheduler/events"
-	"github.com/feroz/concurrent-resource-scheduler/extensions/cooldown"
+	"github.com/phero20/concurrent-resource-scheduler/events"
+	"github.com/phero20/concurrent-resource-scheduler/extensions/cooldown"
 )
 
 type mockController struct {

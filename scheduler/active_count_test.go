@@ -3,8 +3,8 @@ package scheduler_test
 import (
 	"testing"
 
-	"github.com/feroz/concurrent-resource-scheduler/placement"
-	"github.com/feroz/concurrent-resource-scheduler/scheduler"
+	"github.com/phero20/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/scheduler"
 )
 
 type activeCountTestStrategy struct {

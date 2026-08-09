@@ -1,4 +1,4 @@
-module github.com/feroz/concurrent-resource-scheduler
+module github.com/phero20/concurrent-resource-scheduler
 
 go 1.25.5
 

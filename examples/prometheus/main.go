@@ -6,11 +6,11 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/feroz/concurrent-resource-scheduler/config"
-	"github.com/feroz/concurrent-resource-scheduler/events"
-	"github.com/feroz/concurrent-resource-scheduler/extensions/metrics"
-	promext "github.com/feroz/concurrent-resource-scheduler/extensions/prometheus"
-	"github.com/feroz/concurrent-resource-scheduler/scheduler"
+	"github.com/phero20/concurrent-resource-scheduler/config"
+	"github.com/phero20/concurrent-resource-scheduler/events"
+	"github.com/phero20/concurrent-resource-scheduler/extensions/metrics"
+	promext "github.com/phero20/concurrent-resource-scheduler/extensions/prometheus"
+	"github.com/phero20/concurrent-resource-scheduler/scheduler"
 )
 
 type Worker struct {

@@ -5,9 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/feroz/concurrent-resource-scheduler/errors"
-	"github.com/feroz/concurrent-resource-scheduler/internal/lookup"
-	"github.com/feroz/concurrent-resource-scheduler/internal/node"
+	"github.com/phero20/concurrent-resource-scheduler/errors"
+	"github.com/phero20/concurrent-resource-scheduler/internal/lookup"
+	"github.com/phero20/concurrent-resource-scheduler/internal/node"
 )
 
 func TestLookupAddAndGet(t *testing.T) {

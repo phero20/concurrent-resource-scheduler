@@ -18,4 +18,4 @@
 - [ ] Publish the release.
 
 ## Post-release
-- [ ] Verify visibility on [pkg.go.dev](https://pkg.go.dev/github.com/feroz/concurrent-resource-scheduler).
+- [ ] Verify visibility on [pkg.go.dev](https://pkg.go.dev/github.com/phero20/concurrent-resource-scheduler).
