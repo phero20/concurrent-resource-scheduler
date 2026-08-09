@@ -169,7 +169,7 @@ True consistent hashing requires a stable routing key (e.g. user ID). Because th
 - Architecture strictly preserves the generic nature of `Acquire()` and the existing `AcquireStrategy` ecosystem.
 - `ConsistentHashRing` remains an internal data structure, not an `AcquireStrategy`.
 
-### Phase 5.3 — Weighted Selection Strategy
+### Phase 5.3 ✅ Weighted Selection Strategy
 
 #### 1. Goal
 Allow shards to receive traffic proportional to an assigned weight capacity.
