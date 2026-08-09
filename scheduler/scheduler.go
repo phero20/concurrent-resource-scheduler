@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/feroz/concurrent-resource-scheduler/config"
+	"github.com/feroz/concurrent-resource-scheduler/events"
 	"github.com/feroz/concurrent-resource-scheduler/internal/heap"
 	"github.com/feroz/concurrent-resource-scheduler/internal/lookup"
 	"github.com/feroz/concurrent-resource-scheduler/placement"
@@ -38,6 +39,12 @@ type Scheduler[T any, ID comparable] struct {
 
 	// isNillable is computed once during construction to avoid reflection on every Add/Update call.
 	isNillable bool
+
+	// eventStream is the bounded non-blocking channel for asynchronous events.
+	eventStream chan events.Event[ID]
+
+	// stopDispatcher signals the background dispatcher to shut down.
+	stopDispatcher chan struct{}
 }
 
 // shardView implements placement.ShardView for the scheduler.
@@ -87,11 +94,19 @@ func New[T any, ID comparable](cfg config.Config[T, ID]) (*Scheduler[T, ID], err
 		isNillable = true
 	}
 
-	return &Scheduler[T, ID]{
-		cfg:          validatedCfg,
-		shards:       shards,
-		registry:     lookup.New[T, ID](),
-		affinityRing: placement.NewConsistentHashRing(validatedCfg.HeapCount),
-		isNillable:   isNillable,
-	}, nil
+	s := &Scheduler[T, ID]{
+		cfg:            validatedCfg,
+		shards:         shards,
+		registry:       lookup.New[T, ID](),
+		affinityRing:   placement.NewConsistentHashRing(validatedCfg.HeapCount),
+		isNillable:     isNillable,
+		eventStream:    make(chan events.Event[ID], 4096),
+		stopDispatcher: make(chan struct{}),
+	}
+
+	if len(validatedCfg.Observers) > 0 {
+		go s.dispatchLoop()
+	}
+
+	return s, nil
 }

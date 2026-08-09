@@ -256,7 +256,7 @@ None yet. This phase purely establishes the types and configuration validation.
 #### 4. Freeze criteria
 The `Event` and `Observer` API contract is fully defined, reviewed, and merged without altering any existing runtime behavior.
 
-### Phase 6.2 — Asynchronous Non-Blocking Dispatcher
+### Phase 6.2 ✅ Asynchronous Non-Blocking Dispatcher
 
 #### 1. Goal
 Implement a high-performance internal dispatch mechanism that routes events to observers without ever blocking the scheduler's hot path or holding scheduler locks.
