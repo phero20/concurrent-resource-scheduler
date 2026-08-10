@@ -30,7 +30,7 @@ flowchart TD
 - **Lookup Map:** An O(1) concurrent map linking an application-provided key (derived via `KeyFunc`) to an internal `HeapNode`.
 - **Inactive Store:** A holding pool for resources temporarily removed from scheduling (e.g., exclusively acquired or manually excluded).
 - **Acquire Strategy:** An abstraction (RoundRobin, Adaptive, Weighted) consulted **only** during `Acquire` to determine which Heap Shard to query next.
-- **Telemetry Dispatcher:** An asynchronous, lock-free ring-buffer broadcasting internal state transitions to external `Observer` extensions (like Prometheus or Cooldown Managers).
+- **Telemetry Dispatcher:** An asynchronous, non-blocking bounded event channel broadcasting internal state transitions to external `Observer` extensions (like Prometheus or Cooldown Managers).
 
 ---
 
@@ -69,6 +69,8 @@ CRS includes a rich ecosystem of placement methodologies:
 The scheduler acts as a zero-dependency kernel. It exposes a non-blocking `events.Observer` contract. Extensions listen for state transitions (e.g., `EventAcquire`, `EventRelease`) and react asynchronously:
 
 - **Cooldown Manager** (`extensions/cooldown`): Temporarily moves a released resource to the Inactive Store for a timeout before re-including it.
+
+  > **Important:** Cooldown is implemented as an asynchronous Observer. Resources become excluded asynchronously after Release(). There exists a very small eventual-consistency window between Release() and Exclude(). This is an intentional tradeoff to preserve the scheduler's non-blocking event architecture. Applications requiring strict synchronous cooldown enforcement should implement cooldown inside scheduler logic instead of using the observer extension.
 - **Telemetry & Prometheus** (`extensions/metrics`, `extensions/prometheus`): Aggregates throughput using lock-free `sync/atomic` counters and bridges them to Prometheus without slowing down the hot path.
 
 ---
@@ -84,7 +86,7 @@ The scheduler acts as a zero-dependency kernel. It exposes a non-blocking `event
 | `Release` | O(log N) | Single Shard Lock (Push) |
 | `Update` | O(log N) / O(1) | Single Shard Lock (Fix) |
 | `Remove` | O(log N) / O(1) | Single Shard Lock (Remove) |
-| `Get` / `Len` | O(1) | Lock-Free Map / Atomic |
+| `Get` / `Len` | O(1) | Concurrent-safe Map / Atomic |
 | `Stats` | O(Heaps) | All Shards (Iterative Short-Locks) |
 
 *N = Resources per shard. Heaps = Number of Heap Shards. VNodes = Virtual Nodes in Consistent Hash Ring.*

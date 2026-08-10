@@ -15,7 +15,7 @@ import (
 // is Exclusive, the resource is atomically moved to the Inactive Store.
 //
 // Concurrency Guarantees:
-// Thread-safe. It only locks one Heap Shard at a time, ensuring massive horizontal
+// Thread-safe. It only locks one Heap Shard at a time, distributing contention across shards.
 // scalability without global lock contention.
 //
 // Complexity:
@@ -42,7 +42,7 @@ func (s *Scheduler[T, ID]) Acquire() (T, error) {
 // to route the request to a specific shard. This is ideal for sticky sessions.
 //
 // Concurrency Guarantees:
-// Thread-safe. The Consistent Hash Ring lookup is lock-free, and only the target
+// Thread-safe. The Consistent Hash Ring lookup is allocation-free and read-optimized, and only the target
 // Heap Shard is locked during the operation.
 //
 // Complexity:
@@ -113,7 +113,7 @@ func (s *Scheduler[T, ID]) acquireFromStartShard(startShardID int) (T, error) {
 // It returns ErrNotExclusive if the scheduler is not using the Exclusive policy.
 //
 // Concurrency Guarantees:
-// Thread-safe. It performs an O(1) lock-free lookup followed by a single-shard lock.
+// Thread-safe. It performs an O(1) concurrent-safe lookup followed by a single-shard lock.
 //
 // Complexity:
 // O(log N) where N is the number of resources in the target shard.

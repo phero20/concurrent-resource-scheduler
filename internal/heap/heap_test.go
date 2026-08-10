@@ -2,6 +2,7 @@ package heap_test
 
 import (
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/phero20/concurrent-resource-scheduler/internal/heap"
@@ -234,4 +235,46 @@ func assertPanic(t *testing.T, name string, f func()) {
 		}
 	}()
 	f()
+}
+
+func TestHeapConcurrentLenMutation(t *testing.T) {
+	h := heap.New[int, string](intComparator)
+
+	var wg sync.WaitGroup
+	done := make(chan struct{})
+
+	// Goroutine 1: Continuous heap mutations under Lock
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 2000; i++ {
+			h.Lock()
+			n := &node.HeapNode[int, string]{Value: i, Key: "k"}
+			h.Push(n)
+			if i%2 == 0 {
+				_ = h.Pop()
+			}
+			h.Unlock()
+		}
+		close(done)
+	}()
+
+	// Goroutine 2: Concurrent Len calls without lock
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				l := h.Len()
+				if l < 0 {
+					t.Errorf("Invalid length: %d", l)
+				}
+			}
+		}
+	}()
+
+	wg.Wait()
 }

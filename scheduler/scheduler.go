@@ -14,12 +14,12 @@ import (
 // Scheduler is a highly concurrent, lock-sharded priority queue for generic resources.
 // It orchestrates resource placement across multiple internal Heap Shards using a
 // configurable AcquireStrategy. It enforces thread-safe mutations, atomic state
-// transitions between ACTIVE and INACTIVE states, and zero-blocking telemetry
+// transitions between ACTIVE and INACTIVE states, and non-blocking telemetry
 // dispatch.
 //
 // Concurrency Guarantees:
 // All exported methods are completely thread-safe. The scheduler avoids global
-// mutexes in favor of fine-grained per-shard locking and O(1) lock-free maps.
+// mutexes in favor of fine-grained per-shard locking and O(1) concurrent-safe maps.
 //
 // Lifecycle:
 // A Scheduler is created via New() and must eventually be stopped via Shutdown()
@@ -62,7 +62,7 @@ type shardView[T any, ID comparable] struct {
 // It satisfies the placement.ShardView interface for placement strategies.
 //
 // Concurrency Guarantees:
-// This method is lock-free and entirely thread-safe.
+// This method is non-blocking and entirely thread-safe.
 //
 // Complexity: O(1).
 func (v shardView[T, ID]) ShardCount() int {
@@ -73,7 +73,7 @@ func (v shardView[T, ID]) ShardCount() int {
 // It satisfies the placement.ShardView interface for placement strategies.
 //
 // Concurrency Guarantees:
-// This method takes a brief read-lock on the target shard, avoiding global contention.
+// This method performs a non-blocking atomic load of the target shard's active count, avoiding lock contention.
 //
 // Complexity: O(1).
 func (v shardView[T, ID]) ActiveCount(shard int) int {

@@ -5,14 +5,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Release](https://img.shields.io/github/v/release/phero20/concurrent-resource-scheduler)](https://github.com/phero20/concurrent-resource-scheduler/releases)
 [![Coverage Status](https://coveralls.io/repos/github/phero20/concurrent-resource-scheduler/badge.svg?branch=main)](https://coveralls.io/github/phero20/concurrent-resource-scheduler?branch=main)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/phero20/concurrent-resource-scheduler)](https://golang.org/doc/go1.22)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/phero20/concurrent-resource-scheduler)](https://golang.org/doc/go1.25)
 [![GitHub Stars](https://img.shields.io/github/stars/phero20/concurrent-resource-scheduler?style=social)](https://github.com/phero20/concurrent-resource-scheduler/stargazers)
 [![Downloads](https://img.shields.io/github/downloads/phero20/concurrent-resource-scheduler/total)](https://github.com/phero20/concurrent-resource-scheduler/releases)
 [![Build Status](https://github.com/phero20/concurrent-resource-scheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/phero20/concurrent-resource-scheduler/actions)
 
 Concurrent Resource Scheduler (CRS) is a high-performance, domain-agnostic Go library for selecting, prioritizing, and maintaining reusable resources under extreme concurrent load.
 
-For a deeper dive, explore our full documentation in the [`docs/`](./docs) directory.
 
 ---
 
@@ -43,7 +42,7 @@ In large-scale distributed systems, applications frequently depend on pools of r
 
 Historically, teams wrap an array with a `sync.Mutex`. As concurrency increases, this naive approach results in severe lock contention, O(N) linear scans, thundering herds, and stale priority state.
 
-CRS abandons global locking and linear scanning. It implements an architecture based on **Sharded Priority Heaps** combined with a **Lock-Free O(1) Lookup Map**. By partitioning the resource pool into independently locked sub-heaps, multiple goroutines can simultaneously acquire resources without blocking each other, guaranteeing an O(1) peek rather than an O(N) scan.
+CRS abandons global locking and linear scanning. It implements an architecture based on **Sharded Priority Heaps** combined with a **RWMutex-protected O(1) Lookup Map**. By partitioning the resource pool into independently locked sub-heaps, multiple goroutines can simultaneously acquire resources without blocking each other, guaranteeing an O(1) peek rather than an O(N) scan.
 
 ### Real-World Use Cases
 - **AI/LLM Gateways**: Prioritizing API keys with the highest remaining rate-limit quota.
@@ -59,13 +58,13 @@ For an extensive high-level perspective, see [`docs/OVERVIEW.md`](./docs/OVERVIE
 
 | Feature | Description |
 |---------|-------------|
-| **Generic API** | Built heavily upon Go 1.18+ Generics (`T any, ID comparable`). The scheduler is completely ignorant of your domain logic. |
-| **Concurrent-Safe** | Guaranteed data-race-free architecture. Safe to call from 10,000+ goroutines simultaneously. |
+| **Generic API** | Built heavily upon Go 1.25.5+ Generics (`T any, ID comparable`). The scheduler is completely ignorant of your domain logic. |
+| **Concurrent-Safe** | Thread-safe architecture designed for high concurrency and safe for concurrent use from many goroutines. |
 | **Lock Architecture** | No global heap mutex exists. Mutations acquire only the necessary shard-local lock. |
-| **Multiple Heap Shards** | Configurable via `HeapCount`. Partitions the priority queue to achieve massive horizontal scaling. |
+| **Multiple Heap Shards** | Configurable via `HeapCount`. Partitions the priority queue to scale concurrent operations across shards. |
 | **Acquire Policies** | **Shared**: returns resource, remains active. **Exclusive**: temporarily removes resource until released. |
-| **Batch Operations** | Two-phase atomic `BatchAdd` ensures 0-to-100% insertion integrity without exposing partial states. |
-| **Affinity Routing** | Deterministic sticky-session routing utilizing a lock-free Consistent Hash Ring. |
+| **Batch Operations** | Two-phase atomic `BatchAdd` ensures full insertion integrity without exposing partial states. |
+| **Affinity Routing** | Deterministic sticky-session routing utilizing an immutable, read-optimized Consistent Hash Ring. |
 | **Event System** | Lifecycle transitions (Add, Acquire, Release) are asynchronously broadcasted to observers. |
 | **Placement Strategies** | Pluggable interfaces dictating which shard to query first (Round Robin, Weighted, Adaptive). |
 
@@ -130,7 +129,7 @@ flowchart TD
 
 ## Installation
 
-Ensure you are running Go 1.18 or higher (Go 1.22+ recommended).
+Ensure you are running Go 1.25.5 or higher.
 
 ```sh
 go get github.com/phero20/concurrent-resource-scheduler
@@ -210,7 +209,7 @@ Understanding these concepts is vital to utilizing CRS effectively.
 - **Resources**: Resources (`T`) are completely application-owned. The scheduler has no knowledge of what your resource represents.
 - **Heap Nodes**: Internally, the scheduler wraps your resource inside a `HeapNode`, storing its shard ID and status.
 - **Lookup Map**: A concurrent `sync.RWMutex` map mapping your `ID` to the internal `*HeapNode` for O(1) retrievals without heap scans.
-- **Heap Shards**: Independent, partitioned min-max priority heaps. By setting `HeapCount: 32`, you create 32 independent locks, massively increasing concurrency.
+- **Heap Shards**: Independent, partitioned min-max priority heaps. By setting `HeapCount: 32`, you create 32 independent locks, significantly reducing lock contention under high concurrency.
 - **Affinity**: Routing the exact same request key to the exact same shard.
 
 ---
@@ -236,7 +235,7 @@ CRS strictly decouples Priority from Placement.
 
 - **Round Robin (Default)**: Maintains an atomic counter. Distributes traffic evenly irrespective of load.
 - **Weighted Strategy**: Accepts capacity weights. Uses an internal splitmix64 avalanche RNG.
-- **Adaptive Strategy**: Probabilistically routes traffic to the least congested shard using a lock-free `ShardView.ActiveCount()`.
+- **Adaptive Strategy**: Probabilistically routes traffic to the least congested shard using an atomic, non-blocking `ShardView.ActiveCount()`.
 - **Consistent Hash Ring**: Used exclusively by `AcquireByAffinity` for sticky session routing.
 
 ### Acquire Policies
@@ -258,7 +257,7 @@ CRS was explicitly built to eliminate the dreaded global mutex contention proble
 - **Inactive Store:** `sync.RWMutex`. Protects the isolated map of inactive objects.
 
 ### Avoiding Deadlocks
-CRS strictly enforces lock ordering. The codebase will **never** lock multiple Heap Shards simultaneously. It guarantees that your callbacks cannot cause re-entry deadlocks because the locks are highly localized.
+CRS avoids locking multiple heap shards simultaneously, and observer callbacks are dispatched asynchronously after scheduler locks are released, preventing observer re-entry from blocking the scheduler's internal locks.
 
 ---
 
@@ -267,13 +266,13 @@ CRS strictly enforces lock ordering. The codebase will **never** lock multiple H
 To prevent the core scheduler from becoming bloated with business logic, CRS provides an asynchronous Event System and several built-in extensions.
 
 ### 1. The Event System
-When an operation completes (e.g., `Add`), the scheduler executes a lock-free `emit(Event)`. This places the event in a bounded channel. A background goroutine immediately drains this channel and invokes `Observer.OnEvent(e)`. 
+When an operation completes (e.g., `Add`), the scheduler executes a non-blocking `emit(Event)`. This places the event in a bounded channel. A background goroutine immediately drains this channel and invokes `Observer.OnEvent(e)`. 
 CRS operates under a **Strict Drop Policy**: it will silently drop telemetry events rather than block the scheduler's hot path if observers are too slow.
 
 ```mermaid
 flowchart LR
-    Operation["Public API (e.g. Acquire)"] -->|emit| RingBuffer["Buffered Channel (Non-blocking)"]
-    RingBuffer -->|Background Drain| Loop["dispatchLoop Goroutine"]
+    Operation["Public API (e.g. Acquire)"] -->|emit| EventQueue["Buffered Channel (Non-blocking)"]
+    EventQueue -->|Background Drain| Loop["dispatchLoop Goroutine"]
     Loop --> Observer1["Cooldown Manager (OnEvent)"]
     Loop --> Observer2["Telemetry (OnEvent)"]
 ```
@@ -281,8 +280,10 @@ flowchart LR
 ### 2. Cooldown Extension (`extensions/cooldown`)
 When using `config.Exclusive`, releasing a resource makes it instantly available. The Cooldown Manager intercepts the `EventRelease`, immediately calls `Exclude(id)`, and schedules a `time.AfterFunc` to call `Include(id)` after a duration expires.
 
+> **Important:** Cooldown is implemented as an asynchronous Observer. Resources become excluded asynchronously after Release(). There exists a very small eventual-consistency window between Release() and Exclude(). This is an intentional tradeoff to preserve the scheduler's non-blocking event architecture. Applications requiring strict synchronous cooldown enforcement should implement cooldown inside scheduler logic instead of using the observer extension.
+
 ### 3. Metrics Extension (`extensions/metrics`)
-The `TelemetryObserver` provides lock-free, atomic throughput aggregation. It maintains counters (`AddCount`, `AcquireCount`) via `atomic.AddUint64`. `telemetry.Snapshot()` can be queried thousands of times per second without a single mutex.
+The `TelemetryObserver` provides atomic throughput aggregation. It maintains counters (`AddCount`, `AcquireCount`) via `atomic.AddUint64`. `telemetry.Snapshot()` can be queried thousands of times per second without a single mutex.
 
 ### 4. Prometheus Integration (`extensions/prometheus`)
 The `Collector` bridges both O(H) structural stats and O(1) telemetry stats into the Prometheus ecosystem, exposing metrics like `crs_heap_count`, `crs_resources_active`, and `crs_events_acquire_total`.
@@ -315,23 +316,23 @@ prometheus.MustRegister(collector)
 - **Hot Paths**: The hot path (`Acquire`) uses 0 memory allocations.
 - **Cold Paths**: Operations like `Update` acquire explicit locks but complete in bounded logarithmic time.
 
-### Benchmarks (Simulation)
-Due to the shard-based architecture, CRS scaling is virtually linear. 
+### Benchmarks & Performance Characteristics
 
-| Goroutines | Global Mutex Pool | CRS (HeapCount=16) | CRS (HeapCount=64) |
-| :--- | :--- | :--- | :--- |
-| **10** | 100k ops/sec | 95k ops/sec | 90k ops/sec |
-| **100** | 25k ops/sec | 150k ops/sec | 145k ops/sec |
-| **10,000** | CRASH | 225k ops/sec | 680k ops/sec |
+Heap sharding reduces lock contention under concurrent workloads compared with a single global mutex pool. Actual throughput depends on hardware, workload, resource count, placement strategy, and shard configuration.
+
+To run the built-in placement strategy benchmarks:
+```bash
+go test -bench=. ./placement
+```
 
 ---
 
 ## Testing & Error Handling
 
 This repository enforces an unyielding testing standard.
-- **Unit Tests**: Coverage is mathematically guaranteed at 100% statement coverage.
-- **Race Detector**: Enforces zero data races. Run `go test -race ./...`.
-- **Stress Tests**: Included inside `scheduler/events_dispatch_test.go` and `scheduler/coverage_test.go` involving 10,000 parallel goroutines.
+- **Unit Tests**: High package-level coverage ranging from 94% to 100% across tested packages.
+- **Race Detector**: Validated with Go's race detector (`go test -race ./...`).
+- **Stress Tests**: High-concurrency stress tests included across test suites.
 
 ### Error Handling
 
@@ -351,8 +352,8 @@ All standard errors are exported from the `errors` package, allowing idiomatic e
 ## Best Practices
 
 ### Recommended
-1. **Size your HeapCount correctly.** Set `HeapCount` to roughly equal the number of concurrent worker threads. Setting it too high wastes memory; setting it too low increases lock contention. 
-2. **Pre-allocate with BatchAdd.** Use `BatchAdd` at startup instead of a loop of `Add()`. It is vastly more efficient and protects against partial insertion failures.
+1. **Size your HeapCount correctly.** Choose `HeapCount` based on your concurrency level, workload, resource distribution, and contention profile. Benchmark representative workloads to find the appropriate value. 
+2. **Pre-allocate with BatchAdd.** Use `BatchAdd` at startup instead of a loop of `Add()`. It performs bulk insertion with atomic pre-validation to protect against partial insertion failures.
 3. **Use Primitive IDs.** Make your `ID` type a primitive string or integer, not a complex struct, as it is heavily hashed.
 4. **Fast Comparators.** Your comparator executes inside the mutex. Keep it extremely fast and do not perform I/O inside it.
 
@@ -380,12 +381,12 @@ We provide isolated, production-grade, compilable examples covering all major fe
 ## FAQ
 
 **1. Can I use CRS without Generics?**
-No. CRS strictly targets Go 1.18+ to guarantee absolute type safety and zero `interface{}` casting overhead.
+No. CRS requires Go 1.25.5+ and uses Go generics for compile-time type safety without requiring `interface{}`-based resource casting.
 
 **2. What happens if two resources have the same priority?**
 The internal heap provides no tie-breaker guarantee. Order will be arbitrary.
 
-**3. Does CRS implement Weighted Round Robin?**
+**3. Does CRS support weighted placement?**
 Yes. Use `placement.NewWeightedStrategy()`.
 
 **4. Can I change the priority of a resource dynamically?**
@@ -398,7 +399,7 @@ Under heavy load, `sync.RWMutex` suffers from cache-line bouncing and starvation
 Yes. `Shutdown()` uses `atomic.Bool` to ensure idempotent termination.
 
 **7. Does the telemetry observer cause memory leaks?**
-No. It strictly uses fixed atomic counters. It never allocations memory after initialization.
+No. It strictly uses fixed atomic counters. It performs no allocations after initialization.
 
 ---
 
@@ -408,9 +409,9 @@ No. It strictly uses fixed atomic counters. It never allocations memory after in
 | Feature | Mutex + Slice | CRS |
 |---------|---------------|-----|
 | Scan Complexity | O(N) | O(1) |
-| Parallel Acquires | 1 | `HeapCount` |
+| Shard Concurrency | Single Lock | Independent Shards (`HeapCount`) |
 | Priority Updates | O(N log N) | O(log N) |
-| Risk of Deadlock | High (app locks) | Zero |
+| Deadlock Risk | High (global lock) | Minimized (isolated per-shard locking) |
 
 ### CRS vs Go Channels
 Go channels are fantastic for FIFO task distribution, but they are intrinsically incapable of dynamic priority resorting. You cannot peek into a channel to find the "best" item, and you cannot update the priority of an item already resting in a channel buffer.
@@ -445,7 +446,7 @@ You can build your own extensions by implementing `events.Observer[ID]`. Registe
 - 📘 **Documentation & API**: Browse the full library documentation in the [`docs/`](./docs) directory.
 - 🛣️ **Roadmap**: View the complete historical architecture phases in [`docs/ROADMAP.md`](./docs/ROADMAP.md).
 - 📜 **Changelog**: See [CHANGELOG.md](CHANGELOG.md) for Semantic Versioning history.
-- 🤝 **Contributing**: We welcome PRs! Read [CONTRIBUTING.md](CONTRIBUTING.md) for our strict 100% test coverage and Go styling mandates.
+- 🤝 **Contributing**: We welcome PRs! Read [CONTRIBUTING.md](CONTRIBUTING.md) for our strict extensive test coverage and Go styling mandates.
 - ⚖️ **License**: This project is licensed under the MIT License. See [LICENSE](LICENSE).
 
 ### Support
@@ -458,4 +459,4 @@ Special thanks to the open-source Go community for pioneering robust concurrent 
 
 ---
 
-> **Concurrent Resource Scheduler** — Built with unwavering production-grade rigor. 0 data races. 100% statement coverage.
+> **Concurrent Resource Scheduler** — Built with unwavering production-grade rigor. race-detector validation, and 94–100% package coverage.

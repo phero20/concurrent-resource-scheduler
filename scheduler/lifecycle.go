@@ -11,7 +11,7 @@ import (
 // in the Inactive Store.
 //
 // Concurrency Guarantees:
-// Thread-safe. It identifies the resource location via O(1) lock-free lookup and
+// Thread-safe. It identifies the resource location via O(1) concurrent-safe lookup and
 // strictly takes either the target shard lock or the Inactive Store lock.
 //
 // Complexity:

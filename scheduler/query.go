@@ -12,7 +12,7 @@ import (
 // It returns the resource value regardless of whether it is ACTIVE or INACTIVE.
 //
 // Concurrency Guarantees:
-// Thread-safe and completely lock-free. It uses the concurrent global Lookup Map.
+// Thread-safe and RWMutex-protected. It uses the concurrent global Lookup Map.
 //
 // Complexity: O(1).
 func (s *Scheduler[T, ID]) Get(id ID) (T, error) {
@@ -41,7 +41,7 @@ func (s *Scheduler[T, ID]) Get(id ID) (T, error) {
 // This includes both ACTIVE resources and INACTIVE resources.
 //
 // Concurrency Guarantees:
-// Thread-safe and lock-free. It queries the concurrent global Lookup Map.
+// Thread-safe and RWMutex-protected. It queries the concurrent global Lookup Map.
 //
 // Complexity: O(1).
 func (s *Scheduler[T, ID]) Len() int {
@@ -53,7 +53,7 @@ func (s *Scheduler[T, ID]) Len() int {
 // deep operational visibility.
 //
 // Concurrency Guarantees:
-// Thread-safe. It acquires short-lived read locks on individual shards iteratively,
+// Thread-safe. It acquires short-lived locks on individual shards iteratively,
 // never halting the entire scheduler or starving Acquire operations.
 //
 // Complexity:

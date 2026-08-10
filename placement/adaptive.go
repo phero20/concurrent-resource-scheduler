@@ -7,7 +7,7 @@ import (
 // AdaptiveStrategy probabilistically favors Heap Shards with fewer active resources.
 //
 // Behavior:
-// It evaluates the load on all shards using the lock-free ActiveCount view
+// It evaluates the load on all shards using the atomic ActiveCount view
 // and weights selection heavily toward the least contended shards.
 //
 // Concurrency Guarantees:

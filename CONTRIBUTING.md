@@ -26,7 +26,7 @@ The architecture is **frozen** at v1.0.0. Every implementation decision must res
 ## Testing requirements
 
 - ALL test files must be placed inside their respective packages using `package <name>_test` for black-box testing.
-- Target **100% statement coverage** for all changes.
+- Target **94-100% package coverage** for all changes.
 - For any shared-state change, run:
 
 ```sh

@@ -10,8 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Core Scheduler implementation exposing `Acquire`, `BatchAdd`, `Add`, `Release`, `Exclude`, `Include`, `Remove`, and `Update`.
 - Thread-safe Sharded Heaps eliminating global locks for extreme concurrency.
-- Internal `Lookup Map` enabling O(1) lock-free resource membership querying.
-- Event Dispatcher Hooks for asynchronous, zero-blocking telemetry and callbacks.
+- Internal `Lookup Map` enabling O(1) concurrent-safe resource membership querying.
+- Event Dispatcher Hooks for asynchronous, non-blocking telemetry and callbacks.
 - Pluggable `AcquireStrategy` system supporting:
   - `RoundRobin`
   - `WeightedStrategy`
@@ -22,4 +22,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `extensions/metrics` (Lock-free atomic throughput aggregator).
   - `extensions/prometheus` (Prometheus exporter collector).
 - Extensive production-ready documentation and standalone examples.
-- 100% test coverage with zero data races.
+- extensive test coverage with zero detected data races under Go's race detector.

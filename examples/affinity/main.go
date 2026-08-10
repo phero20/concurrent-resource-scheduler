@@ -49,7 +49,7 @@ func main() {
 	res1, _ := sched.AcquireByAffinity(session1)
 	fmt.Printf("Session 1 acquired: %s\n", res1.ID)
 
-	// 2. Acquire again with the same key. We are guaranteed to hit the same shard,
+	// 2. Acquire again with the same key. Consistent hashing routes it to the same shard,
 	// meaning we will get the exact same resource if we use config.Shared.
 	res2, _ := sched.AcquireByAffinity(session1)
 	fmt.Printf("Session 1 re-acquired: %s\n", res2.ID)

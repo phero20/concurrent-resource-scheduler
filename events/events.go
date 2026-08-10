@@ -55,7 +55,7 @@ type Event[ID comparable] struct {
 //
 // Concurrency Guarantees:
 // Implementations MUST NOT block. The scheduler invokes OnEvent from a dedicated
-// background goroutine. A blocking observer will cause the internal event ring-buffer
+// background goroutine. A blocking observer will cause the internal event channel
 // to drop events silently to protect scheduler throughput.
 type Observer[ID comparable] interface {
 	OnEvent(e Event[ID])

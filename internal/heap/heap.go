@@ -3,6 +3,7 @@ package heap
 import (
 	containerheap "container/heap"
 	"sync"
+	"sync/atomic"
 
 	"github.com/phero20/concurrent-resource-scheduler/config"
 	"github.com/phero20/concurrent-resource-scheduler/internal/node"
@@ -66,8 +67,9 @@ func (d *heapData[T, ID]) Pop() any {
 //   - Heap strictly owns synchronization for its internal heapData.
 type Heap[T any, ID comparable] struct {
 	// mu protects the internal heapData.
-	mu   sync.Mutex
-	data heapData[T, ID]
+	mu    sync.Mutex
+	data  heapData[T, ID]
+	count atomic.Int64
 }
 
 // New creates a new empty Heap. It assumes the comparator is already validated.
@@ -102,6 +104,7 @@ func (h *Heap[T, ID]) Peek() *node.HeapNode[T, ID] {
 // Push is a type-safe wrapper that adds a node to the heap and restores ordering.
 func (h *Heap[T, ID]) Push(n *node.HeapNode[T, ID]) {
 	containerheap.Push(&h.data, n)
+	h.count.Add(1)
 }
 
 // Pop is a type-safe wrapper that removes and returns the highest-priority node.
@@ -110,7 +113,9 @@ func (h *Heap[T, ID]) Pop() *node.HeapNode[T, ID] {
 	if len(h.data.nodes) == 0 {
 		return nil
 	}
-	return containerheap.Pop(&h.data).(*node.HeapNode[T, ID])
+	res := containerheap.Pop(&h.data).(*node.HeapNode[T, ID])
+	h.count.Add(-1)
+	return res
 }
 
 // Fix is a type-safe wrapper that restores heap ordering after the node at the given index has changed.
@@ -128,11 +133,13 @@ func (h *Heap[T, ID]) Remove(index int) *node.HeapNode[T, ID] {
 	if index < 0 || index >= len(h.data.nodes) {
 		panic("heap: Remove called with invalid index")
 	}
-	return containerheap.Remove(&h.data, index).(*node.HeapNode[T, ID])
+	res := containerheap.Remove(&h.data, index).(*node.HeapNode[T, ID])
+	h.count.Add(-1)
+	return res
 }
 
-// Len returns the number of nodes in the heap without taking a lock.
-// The caller must hold the Heap lock if strong consistency is required.
+// Len returns the number of nodes in the heap.
+// It is thread-safe and non-blocking, reading an atomic counter updated on mutations.
 func (h *Heap[T, ID]) Len() int {
-	return len(h.data.nodes)
+	return int(h.count.Load())
 }

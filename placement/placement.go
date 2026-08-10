@@ -3,7 +3,7 @@ package placement
 // ShardView abstracts read-only access to scheduler topology.
 //
 // Behavior:
-// Exposes the number of shards and lock-free active resource counts, allowing
+// Exposes the number of shards and atomic active resource counts, allowing
 // strategies to make load-aware decisions without mutating scheduler internals.
 type ShardView interface {
 	// ShardCount returns the number of configured Heap Shards.

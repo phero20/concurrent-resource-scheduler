@@ -27,7 +27,7 @@ type TelemetryStats struct {
 // It aggregates events into atomic counters without locking.
 //
 // Concurrency Guarantees:
-// 100% lock-free. It uses sync/atomic exclusively to guarantee zero
+// Atomic and thread-safe. It uses sync/atomic exclusively to prevent lock overhead.
 // contention on the background dispatcher thread.
 type TelemetryObserver[ID comparable] struct {
 	adds     atomic.Uint64
@@ -51,7 +51,7 @@ func NewTelemetryObserver[ID comparable]() *TelemetryObserver[ID] {
 // OnEvent intercepts scheduler events and increments the corresponding atomic counter.
 //
 // Concurrency Guarantees:
-// Completely lock-free and non-blocking.
+// Atomic and non-blocking.
 func (o *TelemetryObserver[ID]) OnEvent(e events.Event[ID]) {
 	switch e.Type {
 	case events.EventAdd:
