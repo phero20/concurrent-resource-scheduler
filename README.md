@@ -1,14 +1,10 @@
 # Concurrent Resource Scheduler
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/phero20/concurrent-resource-scheduler.svg)](https://pkg.go.dev/github.com/phero20/concurrent-resource-scheduler)
-[![Go Report Card](https://goreportcard.com/badge/github.com/phero20/concurrent-resource-scheduler)](https://goreportcard.com/report/github.com/phero20/concurrent-resource-scheduler)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/phero20/concurrent-resource-scheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/phero20/concurrent-resource-scheduler/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/phero20/concurrent-resource-scheduler)](https://github.com/phero20/concurrent-resource-scheduler/blob/main/go.mod)
+[![License](https://img.shields.io/github/license/phero20/concurrent-resource-scheduler)](https://github.com/phero20/concurrent-resource-scheduler/blob/main/LICENSE)
 [![Release](https://img.shields.io/github/v/release/phero20/concurrent-resource-scheduler)](https://github.com/phero20/concurrent-resource-scheduler/releases)
-[![Coverage Status](https://coveralls.io/repos/github/phero20/concurrent-resource-scheduler/badge.svg?branch=main)](https://coveralls.io/github/phero20/concurrent-resource-scheduler?branch=main)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/phero20/concurrent-resource-scheduler)](https://golang.org/doc/go1.25)
-[![GitHub Stars](https://img.shields.io/github/stars/phero20/concurrent-resource-scheduler?style=social)](https://github.com/phero20/concurrent-resource-scheduler/stargazers)
-[![Downloads](https://img.shields.io/github/downloads/phero20/concurrent-resource-scheduler/total)](https://github.com/phero20/concurrent-resource-scheduler/releases)
-[![Build Status](https://github.com/phero20/concurrent-resource-scheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/phero20/concurrent-resource-scheduler/actions)
 
 Concurrent Resource Scheduler (CRS) is a high-performance, domain-agnostic Go library for selecting, prioritizing, and maintaining reusable resources under extreme concurrent load.
 
