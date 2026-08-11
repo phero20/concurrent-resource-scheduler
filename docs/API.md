@@ -10,7 +10,7 @@ type Config[T any, ID comparable] struct {
     Comparator      Comparator[T]
     KeyFunc         KeyFunc[T, ID]
     AcquirePolicy   config.AcquirePolicy
-    AcquireStrategy placement.AcquireStrategy
+    AcquireStrategy acquire.AcquireStrategy
     Observers       []events.Observer[ID]
 }
 ```
@@ -19,11 +19,11 @@ type Config[T any, ID comparable] struct {
 - `config.Shared`: Returns a resource while leaving it ACTIVE in its Heap Shard.
 - `config.Exclusive`: Removes a resource from its Heap Shard, places it INACTIVE in the Inactive Store. Requires `Release` before it can be acquired again.
 
-### Placement Strategies (`placement.AcquireStrategy`)
-- `placement.NewRoundRobin()`: Cycles shards sequentially.
-- `placement.NewWeightedStrategy(weights []uint)`: Distributes based on capacity weights.
-- `placement.NewAdaptiveStrategy()`: Dynamically favors lightly loaded shards based on O(1) active counts.
-- `placement.NewConsistentHashRing(shardCount)`: Used internally for `AcquireByAffinity`.
+### Acquire Strategies (`acquire.AcquireStrategy`)
+- `acquire.NewRoundRobin()`: Cycles shards sequentially.
+- `acquire.NewWeightedStrategy(weights []uint)`: Distributes based on capacity weights.
+- `acquire.NewAdaptiveStrategy()`: Dynamically favors lightly loaded shards based on O(1) active counts.
+- `acquire.NewConsistentHashRing(shardCount)`: Used internally for `AcquireByAffinity`.
 
 ## Lifecycle Methods
 
@@ -34,7 +34,7 @@ type Config[T any, ID comparable] struct {
 | `Add` | Add one resource. |
 | `Remove` | Permanently remove a resource by key. Works regardless of `AcquirePolicy`. |
 | `Acquire` | Ask the Acquire Strategy for a shard and return a resource according to `AcquirePolicy`. |
-| `AcquireByAffinity` | Hash a `placement.AffinityIdentifier` to deterministically target a shard (Sticky Sessions). |
+| `AcquireByAffinity` | Hash a `acquire.AffinityIdentifier` to deterministically target a shard (Sticky Sessions). |
 | `Release` | Return an inactive resource (removed by `Exclusive` acquire) to its original Heap Shard. |
 | `Get` / `Len` | Read-only state retrieval. |
 | `Exclude` | Remove a resource from its Heap Shard and place it in the Inactive Store manually. |

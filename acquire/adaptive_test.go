@@ -1,13 +1,13 @@
-package placement_test
+package acquire_test
 
 import (
 	"sync"
 	"testing"
 
-	"github.com/phero20/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/acquire"
 )
 
-// adaptiveMockView implements placement.ShardView for testing adaptive load balancing.
+// adaptiveMockView implements acquire.ShardView for testing adaptive load balancing.
 type adaptiveMockView struct {
 	count        int
 	activeCounts map[int]int
@@ -25,7 +25,7 @@ func (m adaptiveMockView) ActiveCount(shard int) int {
 }
 
 func TestAdaptiveStrategy_Distribution(t *testing.T) {
-	strategy := placement.NewAdaptiveStrategy()
+	strategy := acquire.NewAdaptiveStrategy()
 
 	// Shard 0 is heavily loaded, Shard 1 is medium, Shard 2 is lightly loaded, Shard 3 is empty
 	view := adaptiveMockView{
@@ -62,7 +62,7 @@ func TestAdaptiveStrategy_Distribution(t *testing.T) {
 }
 
 func TestAdaptiveStrategy_ZeroOrOneShard(t *testing.T) {
-	strategy := placement.NewAdaptiveStrategy()
+	strategy := acquire.NewAdaptiveStrategy()
 
 	shard0 := strategy.Select(adaptiveMockView{count: 0})
 	if shard0 != 0 {
@@ -76,7 +76,7 @@ func TestAdaptiveStrategy_ZeroOrOneShard(t *testing.T) {
 }
 
 func TestAdaptiveStrategy_ConcurrentSelect(t *testing.T) {
-	strategy := placement.NewAdaptiveStrategy()
+	strategy := acquire.NewAdaptiveStrategy()
 	view := adaptiveMockView{count: 4, activeCounts: map[int]int{0: 10, 1: 5, 2: 2, 3: 0}}
 
 	var wg sync.WaitGroup
@@ -97,8 +97,8 @@ func TestAdaptiveStrategy_ConcurrentSelect(t *testing.T) {
 }
 
 func BenchmarkAdaptiveStrategy_Select(b *testing.B) {
-	strategy := placement.NewAdaptiveStrategy()
-	var view placement.ShardView = adaptiveMockView{count: 4, activeCounts: map[int]int{0: 10, 1: 5, 2: 2, 3: 0}}
+	strategy := acquire.NewAdaptiveStrategy()
+	var view acquire.ShardView = adaptiveMockView{count: 4, activeCounts: map[int]int{0: 10, 1: 5, 2: 2, 3: 0}}
 
 	b.ResetTimer()
 	b.ReportAllocs()

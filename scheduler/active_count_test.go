@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/phero20/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/acquire"
 	"github.com/phero20/concurrent-resource-scheduler/scheduler"
 )
 
@@ -13,7 +13,7 @@ type activeCountTestStrategy struct {
 	t *testing.T
 }
 
-func (s *activeCountTestStrategy) Select(view placement.ShardView) int {
+func (s *activeCountTestStrategy) Select(view acquire.ShardView) int {
 	// Test valid shard
 	if view.ActiveCount(0) != 1 {
 		s.t.Errorf("Expected 1 active resource in shard 0, got %d", view.ActiveCount(0))
@@ -44,7 +44,7 @@ func TestShardView_ActiveCount(t *testing.T) {
 
 func TestScheduler_ConcurrentAdaptiveActiveCountRace(t *testing.T) {
 	cfg := validConfig(4)
-	cfg.AcquireStrategy = placement.NewAdaptiveStrategy()
+	cfg.AcquireStrategy = acquire.NewAdaptiveStrategy()
 
 	sched, err := scheduler.New(cfg)
 	if err != nil {

@@ -20,7 +20,6 @@ type LifecycleController[ID comparable] interface {
 // Manager is an events.Observer that automatically places released resources
 // into a temporary cooldown state.
 //
-//
 // Important:
 // Cooldown is implemented as an asynchronous Observer. Resources become
 // excluded asynchronously after Release(). There exists a very small

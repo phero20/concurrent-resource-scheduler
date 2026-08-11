@@ -1,9 +1,9 @@
 package config
 
 import (
+	"github.com/phero20/concurrent-resource-scheduler/acquire"
 	"github.com/phero20/concurrent-resource-scheduler/errors"
 	"github.com/phero20/concurrent-resource-scheduler/events"
-	"github.com/phero20/concurrent-resource-scheduler/placement"
 )
 
 const (
@@ -69,7 +69,7 @@ type Config[T any, ID comparable] struct {
 	// AcquirePolicy is Shared or Exclusive; immutable after construction.
 	AcquirePolicy AcquirePolicy
 	// AcquireStrategy is the optional acquire-shard selection policy.
-	AcquireStrategy placement.AcquireStrategy
+	AcquireStrategy acquire.AcquireStrategy
 	// Observers receives read-only lifecycle events.
 	Observers []events.Observer[ID]
 }

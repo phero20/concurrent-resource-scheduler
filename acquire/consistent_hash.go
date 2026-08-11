@@ -1,4 +1,4 @@
-package placement
+package acquire
 
 import (
 	"hash/fnv"

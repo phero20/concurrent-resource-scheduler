@@ -61,7 +61,7 @@ For an extensive high-level perspective, see [`docs/OVERVIEW.md`](./docs/OVERVIE
 | **Batch Operations** | Two-phase atomic `BatchAdd` ensures full insertion integrity without exposing partial states. |
 | **Affinity Routing** | Deterministic sticky-session routing utilizing an immutable, read-optimized Consistent Hash Ring. |
 | **Event System** | Lifecycle transitions (Add, Acquire, Release) are asynchronously broadcasted to observers. |
-| **Placement Strategies** | Pluggable interfaces dictating which shard to query first (Round Robin, Weighted, Adaptive). |
+| **Acquire Strategies** | Pluggable interfaces dictating which shard to query first (Round Robin, Weighted, Adaptive). |
 
 ---
 
@@ -224,9 +224,9 @@ For complete, detailed API documentation, please see our [`docs/API.md`](./docs/
 - **`Exclude` / `Include`**: Manually forces an ACTIVE resource into the Inactive Store and vice-versa.
 - **`Remove`**: Permanently deletes a resource.
 
-### Placement Strategies
+### Acquire Strategies
 
-CRS strictly decouples Priority from Placement.
+CRS strictly decouples Priority from Acquire.
 
 - **Round Robin (Default)**: Maintains an atomic counter. Distributes traffic evenly irrespective of load.
 - **Weighted Strategy**: Accepts capacity weights. Uses an internal splitmix64 avalanche RNG.
@@ -313,11 +313,11 @@ prometheus.MustRegister(collector)
 
 ### Benchmarks & Performance Characteristics
 
-Heap sharding reduces lock contention under concurrent workloads compared with a single global mutex pool. Actual throughput depends on hardware, workload, resource count, placement strategy, and shard configuration.
+Heap sharding reduces lock contention under concurrent workloads compared with a single global mutex pool. Actual throughput depends on hardware, workload, resource count, acquire strategy, and shard configuration.
 
-To run the built-in placement strategy benchmarks:
+To run the built-in acquire strategy benchmarks:
 ```bash
-go test -bench=. ./placement
+go test -bench=. ./acquire
 ```
 
 ---
@@ -381,8 +381,8 @@ No. CRS requires Go 1.25.5+ and uses Go generics for compile-time type safety wi
 **2. What happens if two resources have the same priority?**
 The internal heap provides no tie-breaker guarantee. Order will be arbitrary.
 
-**3. Does CRS support weighted placement?**
-Yes. Use `placement.NewWeightedStrategy()`.
+**3. Does CRS support weighted acquire?**
+Yes. Use `acquire.NewWeightedStrategy()`.
 
 **4. Can I change the priority of a resource dynamically?**
 Yes. Call `Update(res)`. The scheduler will recalculate the heap ordering.
@@ -421,12 +421,12 @@ Go channels are fantastic for FIFO task distribution, but they are intrinsically
 - `events/`: Observer patterns and asynchronous hooks
 - `extensions/`: Pluggable non-core architecture (cooldown, metrics)
 - `internal/`: Encapsulated state (heap arrays, map lookups)
-- `placement/`: AcquireStrategy and Shard selection logic
+- `acquire/`: AcquireStrategy and Shard selection logic
 - `scheduler/`: Core orchestrator and public facade
 - `stats/`: Read-only snapshot structures
 
 ### Internal Architecture
-If you are contributing, familiarize yourself with the internal layers. Lower layers (`heap`) are entirely ignorant of higher layers (`scheduler` or `placement`).
+If you are contributing, familiarize yourself with the internal layers. Lower layers (`heap`) are entirely ignorant of higher layers (`scheduler` or `acquire`).
 - `internal/heap`: Standard array-backed binary tree. Exposes push, pop, fix, peek.
 - `internal/lookup`: `sync.RWMutex` map from `ID` -> `*node.HeapNode`.
 - `internal/node`: The struct linking your generic `T` to array indices and active states.
@@ -439,7 +439,6 @@ You can build your own extensions by implementing `events.Observer[ID]`. Registe
 ## Project Information
 
 - 📘 **Documentation & API**: Browse the full library documentation in the [`docs/`](./docs) directory.
-- 🛣️ **Roadmap**: View the complete historical architecture phases in [`docs/ROADMAP.md`](./docs/ROADMAP.md).
 - 📜 **Changelog**: See [CHANGELOG.md](CHANGELOG.md) for Semantic Versioning history.
 - 🤝 **Contributing**: We welcome PRs! Read [CONTRIBUTING.md](CONTRIBUTING.md) for our strict extensive test coverage and Go styling mandates.
 - ⚖️ **License**: This project is licensed under the MIT License. See [LICENSE](LICENSE).

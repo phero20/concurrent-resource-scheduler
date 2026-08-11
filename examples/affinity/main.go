@@ -12,7 +12,7 @@ type Item struct {
 	ID string
 }
 
-// SessionKey implements placement.AffinityIdentifier.
+// SessionKey implements acquire.AffinityIdentifier.
 // The scheduler uses this to deterministically hash and route the request.
 type SessionKey string
 

@@ -1,8 +1,8 @@
 package scheduler_test
 
 import (
+	"github.com/phero20/concurrent-resource-scheduler/acquire"
 	"github.com/phero20/concurrent-resource-scheduler/config"
-	"github.com/phero20/concurrent-resource-scheduler/placement"
 )
 
 type Resource struct {
@@ -40,6 +40,6 @@ func (s stringAffinity) AppendAffinityBytes(dst []byte) []byte {
 
 type badStrategy int
 
-func (b badStrategy) Select(view placement.ShardView) int {
+func (b badStrategy) Select(view acquire.ShardView) int {
 	return int(b)
 }

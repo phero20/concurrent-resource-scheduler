@@ -1,4 +1,4 @@
-package placement_test
+package acquire_test
 
 import (
 	"hash/fnv"
@@ -7,11 +7,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/phero20/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/acquire"
 )
 
 func TestConsistentHashRing_Deterministic(t *testing.T) {
-	ring := placement.NewConsistentHashRing(4)
+	ring := acquire.NewConsistentHashRing(4)
 
 	h := fnv.New64a()
 	h.Write([]byte("test-key-1"))
@@ -27,7 +27,7 @@ func TestConsistentHashRing_Deterministic(t *testing.T) {
 
 func TestConsistentHashRing_Distribution(t *testing.T) {
 	numShards := 4
-	ring := placement.NewConsistentHashRing(numShards)
+	ring := acquire.NewConsistentHashRing(numShards)
 
 	counts := make(map[int]int)
 	numKeys := 100000
@@ -54,8 +54,8 @@ func TestConsistentHashRing_MinimalReshuffling(t *testing.T) {
 	shardsBefore := 4
 	shardsAfter := 5
 
-	ring4 := placement.NewConsistentHashRing(shardsBefore)
-	ring5 := placement.NewConsistentHashRing(shardsAfter)
+	ring4 := acquire.NewConsistentHashRing(shardsBefore)
+	ring5 := acquire.NewConsistentHashRing(shardsAfter)
 
 	numKeys := 100000
 	remapped := 0
@@ -82,7 +82,7 @@ func TestConsistentHashRing_MinimalReshuffling(t *testing.T) {
 }
 
 func TestConsistentHashRing_ConcurrentReads(t *testing.T) {
-	ring := placement.NewConsistentHashRing(4)
+	ring := acquire.NewConsistentHashRing(4)
 
 	var wg sync.WaitGroup
 	numWorkers := 100
@@ -102,7 +102,7 @@ func TestConsistentHashRing_ConcurrentReads(t *testing.T) {
 }
 
 func BenchmarkConsistentHashRing_GetShard(b *testing.B) {
-	ring := placement.NewConsistentHashRing(4)
+	ring := acquire.NewConsistentHashRing(4)
 
 	b.ResetTimer()
 	b.ReportAllocs()

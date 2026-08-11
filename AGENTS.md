@@ -50,7 +50,7 @@ Follow the planned package boundaries as implementation is added:
 config/       Scheduler configuration and validation
 scheduler/    Public scheduler orchestration and lifecycle
 heap/         Heap Shards, internal HeapNodes, and heap-local operations
-placement/    Acquire Strategy abstraction and built-in Round Robin strategy
+acquire/    Acquire Strategy abstraction and built-in Round Robin strategy
 lookup/       Internal Lookup Map from application key to HeapNode
 stats/        Scheduler statistics types and collection
 errors/       Typed, package-level errors
@@ -61,7 +61,7 @@ benchmarks/   Focused performance benchmarks
 ```
 
 - Keep package responsibilities narrow; do not place cross-cutting business logic in `scheduler/`.
-- ALL test files must be placed inside the `tests/` directory (e.g., `tests/scheduler/`, `tests/placement/`). Never place test files next to the implementation.
+- ALL test files must be placed inside the `tests/` directory (e.g., `tests/scheduler/`, `tests/acquire/`). Never place test files next to the implementation.
 - Add new packages only when they establish a real responsibility boundary, not merely to shorten a file.
 - Avoid `utils`, `common`, or catch-all packages.
 
@@ -153,7 +153,7 @@ Implementation proceeds only in the order below. Each phase must compile, be ind
 1. **Phase 1 ✅ Configuration subsystem** — define the public API, resource identity, comparator contract, configuration validation, and stable error taxonomy.
 2. **Phase 2 ✅ Indexed heap subsystem** — implement and test only the private indexed priority heap and its comparator-based invariants.
 3. **Phase 3 ✅ Lookup subsystem** — implement and test KeyFunc-derived application-key to HeapNode registration and Lookup Map synchronization.
-4. **Phase 4 ✅ Scheduler orchestration** — compose the completed heap, lookup, and placement subsystems into concurrent operations. This phase encompasses the complete runtime implementation including:
+4. **Phase 4 ✅ Scheduler orchestration** — compose the completed heap, lookup, and acquire subsystems into concurrent operations. This phase encompasses the complete runtime implementation including:
    - Runtime initialization
    - Add
    - BatchAdd
@@ -169,7 +169,7 @@ Implementation proceeds only in the order below. Each phase must compile, be ind
    - Shutdown
    - Stress tests
    - Race-test validation
-5. **Phase 5 (Deferred) — Advanced Placement Strategies** — implement consistent hashing, weighted selection, adaptive load balancing, and a dedicated sticky selection API.
+5. **Phase 5 (Deferred) — Advanced Acquire Strategies** — implement consistent hashing, weighted selection, adaptive load balancing, and a dedicated sticky selection API.
 6. **Phase 6 (Deferred) — Scheduler Hooks & Extension APIs** — implement lifecycle callbacks and event notifications so applications can build custom cooldowns, circuit breakers, and health managers externally.
 7. **Phase 7 (Deferred) — Observability & Metrics** — implement metrics exporters (e.g., Prometheus) to export O(H) stats snapshots.
 
@@ -186,7 +186,7 @@ Do not mix phase responsibilities. If a proposed feature requires a later phase,
 ## Dependency, documentation, and security policy
 
 - Prefer the Go standard library in the scheduler core. New dependencies require a concrete need, maintenance review, license review, and a reason they do not compromise the hot path.
-- Keep `README.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `CONTRIBUTING.md`, and this file consistent whenever architecture, package boundaries, phases, or public contracts change.
+- Keep `README.md`, `ARCHITECTURE.md`, `CONTRIBUTING.md`, and this file consistent whenever architecture, package boundaries, phases, or public contracts change.
 - Never commit secrets, real credentials, private endpoints, or production resource metadata. Examples and tests must use synthetic data.
 - Report suspected security or concurrency vulnerabilities privately to maintainers rather than publishing an exploit or sensitive reproduction in an issue.
 
@@ -213,7 +213,7 @@ The scheduler must be implemented strictly in phases. Never implement the entire
 Implementation must follow the layered architecture already documented. Examples include Configuration Layer, Validation Layer, Core Types, Internal Data Structures, Heap Layer, Lookup Layer, Inactive Store Layer, Acquire Strategy Layer, Scheduler Core, Public APIs, and Testing Layer. Lower layers must never depend on higher layers. Dependencies should always flow from higher-level components toward lower-level reusable components.
 
 ### Modular Project Structure
-The project must be highly modular. Every responsibility should have its own package/file whenever practical. Avoid large files containing unrelated functionality. Examples: `/config`, `/errors`, `/internal/heap`, `/internal/node`, `/internal/lookup`, `/internal/inactive`, `/internal/placement`, `/internal/validation`, `/internal/scheduler`, `/types`, `/interfaces`, `/utils`. Every reusable component should have a single implementation shared across the entire project. Never duplicate logic.
+The project must be highly modular. Every responsibility should have its own package/file whenever practical. Avoid large files containing unrelated functionality. Examples: `/config`, `/errors`, `/internal/heap`, `/internal/node`, `/internal/lookup`, `/internal/inactive`, `/acquire`, `/scheduler`, `/types`, `/interfaces`, `/utils`. Every reusable component should have a single implementation shared across the entire project. Never duplicate logic.
 
 ### Error Handling
 All exported scheduler errors must be defined in one dedicated package/file. Every package should reuse those shared errors. Never redefine identical errors in multiple files.

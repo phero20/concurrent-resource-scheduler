@@ -3,10 +3,10 @@ package scheduler
 import (
 	"hash/fnv"
 
+	"github.com/phero20/concurrent-resource-scheduler/acquire"
 	"github.com/phero20/concurrent-resource-scheduler/config"
 	"github.com/phero20/concurrent-resource-scheduler/errors"
 	"github.com/phero20/concurrent-resource-scheduler/events"
-	"github.com/phero20/concurrent-resource-scheduler/placement"
 )
 
 // Acquire retrieves the highest priority resource from the scheduler.
@@ -47,7 +47,7 @@ func (s *Scheduler[T, ID]) Acquire() (T, error) {
 //
 // Complexity:
 // O(log V + log N) where V is the number of virtual nodes and N is resources per shard.
-func (s *Scheduler[T, ID]) AcquireByAffinity(key placement.AffinityIdentifier) (T, error) {
+func (s *Scheduler[T, ID]) AcquireByAffinity(key acquire.AffinityIdentifier) (T, error) {
 	var zero T
 	if key == nil {
 		return zero, errors.ErrNilAffinityIdentifier

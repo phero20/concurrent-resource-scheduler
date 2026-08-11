@@ -48,9 +48,9 @@ flowchart TD
 
 ---
 
-## 3. Placement Strategies & Policies
+## 3. Acquire Strategies & Policies
 
-CRS includes a rich ecosystem of placement methodologies:
+CRS includes a rich ecosystem of acquire methodologies:
 
 ### Acquire Policies (Global Behavior)
 - **Shared:** Multiple concurrent callers can acquire the exact same resource. The resource remains active in the heap.

@@ -1,9 +1,9 @@
-package placement_test
+package acquire_test
 
 import (
 	"testing"
 
-	"github.com/phero20/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/acquire"
 )
 
 type mockEmptyShardView struct{}
@@ -11,25 +11,25 @@ type mockEmptyShardView struct{}
 func (m mockEmptyShardView) ShardCount() int           { return 0 }
 func (m mockEmptyShardView) ActiveCount(shard int) int { return 0 }
 
-func TestPlacement_StringMethods(t *testing.T) {
-	rr, ok := placement.NewRoundRobin().(interface{ String() string })
+func TestAcquire_StringMethods(t *testing.T) {
+	rr, ok := acquire.NewRoundRobin().(interface{ String() string })
 	if !ok || rr.String() != "RoundRobin" {
 		t.Errorf("Expected RoundRobin String method")
 	}
 
-	ad := placement.NewAdaptiveStrategy()
+	ad := acquire.NewAdaptiveStrategy()
 	if ad.String() != "Adaptive" {
 		t.Errorf("Expected Adaptive String method")
 	}
 
-	wt := placement.NewWeightedStrategy([]uint{1, 1})
+	wt := acquire.NewWeightedStrategy([]uint{1, 1})
 	if wt.String() != "Weighted" {
 		t.Errorf("Expected Weighted String method")
 	}
 }
 
 func TestWeightedStrategy_ZeroShards(t *testing.T) {
-	wt := placement.NewWeightedStrategy([]uint{1, 1})
+	wt := acquire.NewWeightedStrategy([]uint{1, 1})
 
 	shard := wt.Select(mockEmptyShardView{})
 	if shard != 0 {

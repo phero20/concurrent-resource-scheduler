@@ -4,15 +4,15 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	"github.com/phero20/concurrent-resource-scheduler/acquire"
 	"github.com/phero20/concurrent-resource-scheduler/config"
 	"github.com/phero20/concurrent-resource-scheduler/events"
 	"github.com/phero20/concurrent-resource-scheduler/internal/heap"
 	"github.com/phero20/concurrent-resource-scheduler/internal/lookup"
-	"github.com/phero20/concurrent-resource-scheduler/placement"
 )
 
 // Scheduler is a highly concurrent, lock-sharded priority queue for generic resources.
-// It orchestrates resource placement across multiple internal Heap Shards using a
+// It orchestrates resource acquisition across multiple internal Heap Shards using a
 // configurable AcquireStrategy. It enforces thread-safe mutations, atomic state
 // transitions between ACTIVE and INACTIVE states, and non-blocking telemetry
 // dispatch.
@@ -35,7 +35,7 @@ type Scheduler[T any, ID comparable] struct {
 	registry *lookup.Map[T, ID]
 
 	// affinityRing maps affinity identifiers to shards deterministically.
-	affinityRing *placement.ConsistentHashRing
+	affinityRing *acquire.ConsistentHashRing
 
 	// insertionIndex drives the internal Round Robin insertion strategy across shards.
 	insertionIndex uint32
@@ -53,13 +53,13 @@ type Scheduler[T any, ID comparable] struct {
 	stopDispatcher chan struct{}
 }
 
-// shardView implements placement.ShardView for the scheduler.
+// shardView implements acquire.ShardView for the scheduler.
 type shardView[T any, ID comparable] struct {
 	s *Scheduler[T, ID]
 }
 
 // ShardCount returns the total number of initialized Heap Shards.
-// It satisfies the placement.ShardView interface for placement strategies.
+// It satisfies the acquire.ShardView interface for acquire strategies.
 //
 // Concurrency Guarantees:
 // This method is non-blocking and entirely thread-safe.
@@ -70,7 +70,7 @@ func (v shardView[T, ID]) ShardCount() int {
 }
 
 // ActiveCount returns the number of active resources in the specified Heap Shard.
-// It satisfies the placement.ShardView interface for placement strategies.
+// It satisfies the acquire.ShardView interface for acquire strategies.
 //
 // Concurrency Guarantees:
 // This method performs a non-blocking atomic load of the target shard's active count, avoiding lock contention.
@@ -100,7 +100,7 @@ func New[T any, ID comparable](cfg config.Config[T, ID]) (*Scheduler[T, ID], err
 	}
 
 	if validatedCfg.AcquireStrategy == nil {
-		validatedCfg.AcquireStrategy = placement.NewRoundRobin()
+		validatedCfg.AcquireStrategy = acquire.NewRoundRobin()
 	}
 
 	shards := make([]*heap.Heap[T, ID], validatedCfg.HeapCount)
@@ -127,7 +127,7 @@ func New[T any, ID comparable](cfg config.Config[T, ID]) (*Scheduler[T, ID], err
 		cfg:            validatedCfg,
 		shards:         shards,
 		registry:       lookup.New[T, ID](),
-		affinityRing:   placement.NewConsistentHashRing(validatedCfg.HeapCount),
+		affinityRing:   acquire.NewConsistentHashRing(validatedCfg.HeapCount),
 		isNillable:     isNillable,
 		eventStream:    make(chan events.Event[ID], 4096),
 		stopDispatcher: make(chan struct{}),

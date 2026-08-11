@@ -1,13 +1,13 @@
-package placement_test
+package acquire_test
 
 import (
 	"sync"
 	"testing"
 
-	"github.com/phero20/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/acquire"
 )
 
-// mockView implements placement.ShardView for testing.
+// mockView implements acquire.ShardView for testing.
 type mockView struct {
 	count int
 }
@@ -21,7 +21,7 @@ func (m mockView) ActiveCount(shard int) int {
 }
 
 func TestRoundRobin_Cycle(t *testing.T) {
-	strategy := placement.NewRoundRobin()
+	strategy := acquire.NewRoundRobin()
 	view := mockView{count: 3}
 
 	// Should cycle: 0, 1, 2, 0, 1, 2...
@@ -36,7 +36,7 @@ func TestRoundRobin_Cycle(t *testing.T) {
 }
 
 func TestRoundRobin_ZeroOrNegativeShards(t *testing.T) {
-	strategy := placement.NewRoundRobin()
+	strategy := acquire.NewRoundRobin()
 
 	// Should not panic (division by zero)
 	viewZero := mockView{count: 0}
@@ -51,7 +51,7 @@ func TestRoundRobin_ZeroOrNegativeShards(t *testing.T) {
 }
 
 func TestRoundRobin_Concurrent(t *testing.T) {
-	strategy := placement.NewRoundRobin()
+	strategy := acquire.NewRoundRobin()
 	view := mockView{count: 4}
 
 	var wg sync.WaitGroup

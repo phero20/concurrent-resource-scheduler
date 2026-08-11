@@ -1,14 +1,14 @@
-package placement_test
+package acquire_test
 
 import (
 	"testing"
 
-	"github.com/phero20/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/acquire"
 )
 
 func TestConsistentHashRing_InvalidShardCount(t *testing.T) {
 	// Should default to 1 shard if <= 0
-	ring := placement.NewConsistentHashRing(0)
+	ring := acquire.NewConsistentHashRing(0)
 
 	// Test the fallback works by checking if we get shard 0 for an arbitrary hash
 	shard := ring.GetShard(12345)
@@ -25,7 +25,7 @@ func TestConsistentHashRing_EmptyRing(t *testing.T) {
 	// Actually, wait, `NewConsistentHashRing(-1)` sets shardCount to 1.
 	// The only way `len(r.hashes) == 0` is if `virtualNodesPerShard` was 0, but it's a const 500.
 	// Or if someone manually constructs `&ConsistentHashRing{}`.
-	ring := &placement.ConsistentHashRing{}
+	ring := &acquire.ConsistentHashRing{}
 
 	shard := ring.GetShard(12345)
 	if shard != 0 {

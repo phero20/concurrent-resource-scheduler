@@ -1,4 +1,4 @@
-package placement
+package acquire
 
 import (
 	"sync/atomic"
@@ -25,7 +25,7 @@ type WeightedStrategy struct {
 	counter           atomic.Uint64
 }
 
-// NewWeightedStrategy creates a capacity-aware placement strategy.
+// NewWeightedStrategy creates a capacity-aware acquire strategy.
 //
 // Behavior:
 // Reverts to RoundRobin if weights are empty or uniform.

@@ -1,4 +1,4 @@
-package placement
+package acquire
 
 // ShardView abstracts read-only access to scheduler topology.
 //

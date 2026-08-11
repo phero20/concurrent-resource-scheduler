@@ -7,7 +7,7 @@ The scheduler is strictly layered. Higher layers depend on lower layers, with no
 ```mermaid
 flowchart TD
     Application --> Scheduler
-    Scheduler --> Placement
+    Scheduler --> Acquire
     Scheduler --> Events
     Scheduler --> Heap
     Scheduler --> Lookup

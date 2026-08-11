@@ -1,16 +1,16 @@
-package placement_test
+package acquire_test
 
 import (
 	"math"
 	"sync"
 	"testing"
 
-	"github.com/phero20/concurrent-resource-scheduler/placement"
+	"github.com/phero20/concurrent-resource-scheduler/acquire"
 )
 
 func TestWeightedStrategy_Distribution(t *testing.T) {
 	weights := []uint{10, 20, 70} // 10%, 20%, 70%
-	strategy := placement.NewWeightedStrategy(weights)
+	strategy := acquire.NewWeightedStrategy(weights)
 	view := mockView{count: 3} // mockView from round_robin_test.go
 
 	counts := make(map[int]int)
@@ -37,7 +37,7 @@ func TestWeightedStrategy_Distribution(t *testing.T) {
 func TestWeightedStrategy_ZeroWeight(t *testing.T) {
 	// If a weight is zero, it should never be selected
 	weights := []uint{0, 100, 0}
-	strategy := placement.NewWeightedStrategy(weights)
+	strategy := acquire.NewWeightedStrategy(weights)
 	view := mockView{count: 3}
 
 	for i := 0; i < 10000; i++ {
@@ -51,7 +51,7 @@ func TestWeightedStrategy_ZeroWeight(t *testing.T) {
 func TestWeightedStrategy_AllZerosFallback(t *testing.T) {
 	// If all weights are zero, it should fallback to uniform round-robin
 	weights := []uint{0, 0, 0}
-	strategy := placement.NewWeightedStrategy(weights)
+	strategy := acquire.NewWeightedStrategy(weights)
 	view := mockView{count: 3}
 
 	counts := make(map[int]int)
@@ -71,7 +71,7 @@ func TestWeightedStrategy_AllZerosFallback(t *testing.T) {
 func TestWeightedStrategy_MismatchedShardCountFallback(t *testing.T) {
 	// If the weights length doesn't match the shard count, fallback to uniform
 	weights := []uint{10, 90} // 2 weights
-	strategy := placement.NewWeightedStrategy(weights)
+	strategy := acquire.NewWeightedStrategy(weights)
 	view := mockView{count: 4} // 4 shards in view
 
 	counts := make(map[int]int)
@@ -89,7 +89,7 @@ func TestWeightedStrategy_MismatchedShardCountFallback(t *testing.T) {
 
 func TestWeightedStrategy_ConcurrentSelect(t *testing.T) {
 	weights := []uint{10, 20, 30, 40}
-	strategy := placement.NewWeightedStrategy(weights)
+	strategy := acquire.NewWeightedStrategy(weights)
 	view := mockView{count: 4}
 
 	var wg sync.WaitGroup
@@ -111,7 +111,7 @@ func TestWeightedStrategy_ConcurrentSelect(t *testing.T) {
 
 func BenchmarkWeightedStrategy_Select(b *testing.B) {
 	weights := []uint{10, 20, 30, 40}
-	strategy := placement.NewWeightedStrategy(weights)
+	strategy := acquire.NewWeightedStrategy(weights)
 	view := mockView{count: 4}
 
 	b.ResetTimer()
