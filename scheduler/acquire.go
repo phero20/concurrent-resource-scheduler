@@ -9,17 +9,30 @@ import (
 	"github.com/phero20/concurrent-resource-scheduler/events"
 )
 
-// Acquire retrieves the highest priority resource from the scheduler.
-// It delegates to the configured AcquireStrategy to select a candidate Heap Shard,
-// checking shards sequentially until an available resource is found. If the policy
-// is Exclusive, the resource is atomically moved to the Inactive Store.
+// Acquire retrieves the highest-priority active resource from the scheduler.
 //
-// Concurrency Guarantees:
-// Thread-safe. It only locks one Heap Shard at a time, distributing contention across shards.
-// scalability without global lock contention.
+// The configured [acquire.AcquireStrategy] selects the starting Heap Shard.
+// If that shard is empty or its top resource is not available, Acquire
+// tries remaining shards in sequential order, wrapping around if necessary,
+// until every shard has been visited exactly once. It returns
+// [errors.ErrNoResourceAvailable] if all shards are empty.
 //
-// Complexity:
-// O(H) for Shared policy, O(log N + H) for Exclusive policy, where H is HeapCount and N is resources per shard.
+// Under [config.Shared] policy, the resource remains ACTIVE after Acquire;
+// concurrent callers may acquire the same resource simultaneously. Under
+// [config.Exclusive] policy, the resource is atomically moved to the Inactive
+// Store and cannot be acquired again until [Scheduler.Release] is called.
+//
+// Acquire returns [errors.ErrSchedulerClosed] after [Scheduler.Shutdown].
+// It returns [errors.ErrInvalidAcquireStrategy] if the configured strategy
+// returns an out-of-range shard index.
+//
+// # Concurrency
+//
+// Acquire is safe for concurrent use by multiple goroutines. It locks at most
+// one Heap Shard at a time, distributing contention across shards.
+//
+// Complexity: O(H) for Shared policy; O(log N + H) for Exclusive policy,
+// where H is HeapCount and N is resources per shard.
 func (s *Scheduler[T, ID]) Acquire() (T, error) {
 	var zero T
 	if s.closed.Load() {
@@ -37,16 +50,27 @@ func (s *Scheduler[T, ID]) Acquire() (T, error) {
 	return s.acquireFromStartShard(startShardID)
 }
 
-// AcquireByAffinity retrieves a resource deterministically based on an affinity identifier.
-// It bypasses the global AcquireStrategy, using an internal Consistent Hash Ring
-// to route the request to a specific shard. This is ideal for sticky sessions.
+// AcquireByAffinity retrieves a resource deterministically based on an affinity
+// identifier, bypassing the configured [acquire.AcquireStrategy].
 //
-// Concurrency Guarantees:
-// Thread-safe. The Consistent Hash Ring lookup is allocation-free and read-optimized, and only the target
-// Heap Shard is locked during the operation.
+// AcquireByAffinity uses an internal [acquire.ConsistentHashRing] to map the
+// identifier to a specific starting Heap Shard. The same identifier always
+// maps to the same starting shard, enabling sticky-session routing. If that
+// shard is empty, AcquireByAffinity falls back to adjacent shards in order,
+// identical to [Scheduler.Acquire]'s fallback behavior.
 //
-// Complexity:
-// O(log V + log N) where V is the number of virtual nodes and N is resources per shard.
+// AcquireByAffinity returns [errors.ErrNilAffinityIdentifier] if key is nil.
+// It returns [errors.ErrNoResourceAvailable] if all shards are empty.
+// It returns [errors.ErrSchedulerClosed] after [Scheduler.Shutdown].
+//
+// # Concurrency
+//
+// AcquireByAffinity is safe for concurrent use by multiple goroutines.
+// The ConsistentHashRing lookup is allocation-free and read-optimized;
+// only the target Heap Shard is locked during the operation.
+//
+// Complexity: O(log V + log N) where V is virtual node count and N is
+// resources per shard.
 func (s *Scheduler[T, ID]) AcquireByAffinity(key acquire.AffinityIdentifier) (T, error) {
 	var zero T
 	if key == nil {
@@ -108,15 +132,25 @@ func (s *Scheduler[T, ID]) acquireFromStartShard(startShardID int) (T, error) {
 	return zero, errors.ErrNoResourceAvailable
 }
 
-// Release returns a previously exclusively acquired resource back to the scheduler.
-// It restores the resource to its native Heap Shard and makes it ACTIVE again.
-// It returns ErrNotExclusive if the scheduler is not using the Exclusive policy.
+// Release returns a previously exclusively-acquired resource to its Heap Shard,
+// restoring it to ACTIVE state and making it eligible for future acquisition.
 //
-// Concurrency Guarantees:
-// Thread-safe. It performs an O(1) concurrent-safe lookup followed by a single-shard lock.
+// Release is only valid when the scheduler is configured with
+// [config.Exclusive] policy. It returns [errors.ErrNotExclusive] for
+// [config.Shared] schedulers.
 //
-// Complexity:
-// O(log N) where N is the number of resources in the target shard.
+// Release returns [errors.ErrResourceNotFound] if no resource with the given
+// key exists (it may have been removed while held). It returns
+// [errors.ErrResourceNotInactive] if the resource is already ACTIVE (it may
+// have been re-included by a concurrent [Scheduler.Include] call).
+// It returns [errors.ErrSchedulerClosed] after [Scheduler.Shutdown].
+//
+// # Concurrency
+//
+// Release is safe for concurrent use by multiple goroutines. It performs an
+// O(1) lookup followed by a single-shard lock.
+//
+// Complexity: O(log N) where N is the number of resources in the target shard.
 func (s *Scheduler[T, ID]) Release(id ID) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed

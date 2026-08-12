@@ -11,14 +11,37 @@ func mix(z uint64) uint64 {
 	return z ^ (z >> 31)
 }
 
-// WeightedStrategy distributes traffic proportionally based on static capacities.
+// WeightedStrategy distributes traffic proportionally based on static capacity
+// weights provided at construction time.
 //
-// Behavior:
-// Higher weight shards receive more traffic. It utilizes an internal splitmix64
-// avalanche RNG per selection to maintain statistical distribution.
+// Each weight corresponds to a Heap Shard by position. Higher-weight shards
+// receive a proportionally larger fraction of incoming acquisition requests.
+// The distribution is driven by a lock-free splitmix64 avalanche PRNG for
+// statistical uniformity.
 //
-// Concurrency Guarantees:
-// Thread-safe. The internal state advances atomically.
+// WeightedStrategy is well-suited for heterogeneous resource pools, such as:
+//
+//   - GPU workers with different VRAM capacities.
+//   - API providers with different rate-limit quotas.
+//   - Backend instances with different throughput characteristics.
+//
+// Weights are static: they cannot be changed after construction. If the
+// resource pool changes shape, create a new WeightedStrategy.
+//
+// # Fallback Behavior
+//
+// WeightedStrategy falls back to uniform distribution (equivalent to
+// [NewRoundRobin]) when any of the following conditions hold:
+//
+//   - The weights slice is empty.
+//   - The total of all weights is zero (all-zero weights).
+//   - The number of weights does not equal ShardView.ShardCount() at
+//     selection time (shard count mismatch).
+//
+// # Concurrency
+//
+// WeightedStrategy is safe for concurrent use by multiple goroutines.
+// The internal state advances with a single atomic increment per Select call.
 type WeightedStrategy struct {
 	cumulativeWeights []uint64
 	totalWeight       uint64
@@ -27,8 +50,16 @@ type WeightedStrategy struct {
 
 // NewWeightedStrategy creates a capacity-aware acquire strategy.
 //
-// Behavior:
-// Reverts to RoundRobin if weights are empty or uniform.
+// weights is a slice of non-negative integers, one per Heap Shard in the
+// order they were created. A weight of 0 means the shard receives no traffic
+// when the slice has non-zero weights elsewhere. All weights summing to zero
+// triggers the uniform-distribution fallback.
+//
+// The length of weights must equal the scheduler's HeapCount at acquire time;
+// a mismatch triggers the uniform-distribution fallback. For a stable
+// configuration, supply a slice with exactly [config.Config.HeapCount] elements.
+//
+// The returned strategy is safe for concurrent use by multiple goroutines.
 func NewWeightedStrategy(weights []uint) *WeightedStrategy {
 	cumulative := make([]uint64, len(weights))
 	var total uint64

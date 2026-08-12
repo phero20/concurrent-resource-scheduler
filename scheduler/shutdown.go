@@ -1,14 +1,22 @@
 package scheduler
 
-// Shutdown permanently closes the scheduler and halts all background processing.
-// It stops the event dispatcher goroutine to prevent leaks and marks the scheduler
-// as closed, causing all subsequent operations to return ErrSchedulerClosed.
+// Shutdown permanently closes the scheduler and stops all background
+// processing.
 //
-// Concurrency Guarantees:
-// Thread-safe. It uses atomic flags to ensure idempotent execution.
+// After Shutdown returns:
 //
-// Lifecycle:
-// This method MUST be called when the scheduler is no longer needed.
+//   - All subsequent calls to exported methods (except [Scheduler.Stats])
+//     return [errors.ErrSchedulerClosed].
+//   - The background event-dispatcher goroutine (if started) is stopped.
+//     Events remaining in the internal buffer are discarded.
+//   - In-flight operations that began before Shutdown was called complete
+//     normally; they are not interrupted.
+//
+// Shutdown is idempotent: calling it more than once has no additional effect.
+//
+// # Concurrency
+//
+// Shutdown is safe for concurrent use by multiple goroutines.
 func (s *Scheduler[T, ID]) Shutdown() {
 	if s.closed.CompareAndSwap(false, true) {
 		close(s.stopDispatcher)

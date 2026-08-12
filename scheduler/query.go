@@ -8,11 +8,20 @@ import (
 	"github.com/phero20/concurrent-resource-scheduler/stats"
 )
 
-// Get retrieves a resource by its unique identifier without altering its state.
-// It returns the resource value regardless of whether it is ACTIVE or INACTIVE.
+// Get retrieves a copy of a resource's current value by its unique key.
+// It returns the value regardless of whether the resource is ACTIVE or INACTIVE.
 //
-// Concurrency Guarantees:
-// Thread-safe and RWMutex-protected. It uses the concurrent global Lookup Map.
+// The returned value is a snapshot of the resource at the time of retrieval.
+// A concurrent [Scheduler.Update] may modify the stored value after Get
+// returns; callers that need a guaranteed-consistent view should account for
+// this.
+//
+// Get returns [errors.ErrResourceNotFound] if no resource with the given key
+// exists. It returns [errors.ErrSchedulerClosed] after [Scheduler.Shutdown].
+//
+// # Concurrency
+//
+// Get is safe for concurrent use by multiple goroutines.
 //
 // Complexity: O(1).
 func (s *Scheduler[T, ID]) Get(id ID) (T, error) {
@@ -37,27 +46,37 @@ func (s *Scheduler[T, ID]) Get(id ID) (T, error) {
 	return n.Value, nil
 }
 
-// Len returns the total number of resources registered in the scheduler.
-// This includes both ACTIVE resources and INACTIVE resources.
+// Len returns the total number of resources registered in the scheduler,
+// including both ACTIVE (in Heap Shards) and INACTIVE (in the Inactive Store)
+// resources.
 //
-// Concurrency Guarantees:
-// Thread-safe and RWMutex-protected. It queries the concurrent global Lookup Map.
+// # Concurrency
+//
+// Len is safe for concurrent use by multiple goroutines.
 //
 // Complexity: O(1).
 func (s *Scheduler[T, ID]) Len() int {
 	return s.registry.Len()
 }
 
-// Stats returns a point-in-time snapshot of the scheduler's internal metrics.
-// It aggregates data across all Heap Shards and the Inactive Store to provide
-// deep operational visibility.
+// Stats returns a point-in-time snapshot of the scheduler's operational state.
 //
-// Concurrency Guarantees:
-// Thread-safe. It acquires short-lived locks on individual shards iteratively,
-// never halting the entire scheduler or starving Acquire operations.
+// The snapshot includes counts of active and inactive resources, per-shard
+// sizes, and string representations of the configured policy and strategy.
+// Stats is the only method that succeeds after [Scheduler.Shutdown]; it does
+// not check the closed flag.
 //
-// Complexity:
-// O(H) where H is the number of Heap Shards.
+// Because Stats takes individual shard locks sequentially, the returned
+// snapshot reflects a weakly consistent view: resources may move between
+// shards between lock acquisitions. Use Stats for monitoring, not for
+// coordination.
+//
+// # Concurrency
+//
+// Stats is safe for concurrent use by multiple goroutines. It acquires
+// short-lived locks on individual shards without halting the entire scheduler.
+//
+// Complexity: O(H) where H is the number of Heap Shards.
 func (s *Scheduler[T, ID]) Stats() stats.Stats {
 	var active, empty, nonEmpty int
 	sizes := make([]int, len(s.shards))

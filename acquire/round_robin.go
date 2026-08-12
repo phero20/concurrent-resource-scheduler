@@ -2,25 +2,32 @@ package acquire
 
 import "sync/atomic"
 
-// roundRobin is the built-in acquire strategy.
+// roundRobin is the built-in default acquire strategy.
 type roundRobin struct {
 	next uint32
 }
 
-// NewRoundRobin creates a strategy that cycles through shards sequentially.
+// NewRoundRobin creates a strategy that cycles through Heap Shards sequentially
+// using a single atomic counter, distributing requests evenly across all shards
+// without regard to current load.
 //
-// Behavior:
-// It distributes traffic evenly irrespective of load.
+// NewRoundRobin is well-suited for homogeneous resource pools where all shards
+// hold resources of similar capacity and expected latency. It is the default
+// strategy installed by [scheduler.New] when [config.Config.AcquireStrategy]
+// is nil.
 //
-// Concurrency Guarantees:
-// Thread-safe. It uses a single atomic increment for lock-free advancement.
+// For heterogeneous pools, consider [NewWeightedStrategy]. For dynamic load
+// balancing, consider [NewAdaptiveStrategy].
+//
+// The returned strategy is safe for concurrent use by multiple goroutines.
 func NewRoundRobin() AcquireStrategy {
 	return &roundRobin{}
 }
 
-// Select returns the next sequential shard index.
+// Select returns the next shard index in the round-robin cycle.
+// The index wraps around to 0 after reaching the last shard.
 //
-// Complexity: O(1).
+// Complexity: O(1). Uses a single atomic increment with no locks.
 func (r *roundRobin) Select(shards ShardView) int {
 	n := shards.ShardCount()
 	// Defensive safeguard: ShardCount is guaranteed to be >= 1 by configuration validation,

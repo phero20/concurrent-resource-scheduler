@@ -21,6 +21,9 @@ jobs:
     - name: Build
       run: go build -v ./...
 
+    - name: Verify Formatting
+      run: if [ -n "$(gofmt -l .)" ]; then echo "Go code is not formatted"; exit 1; fi
+
     - name: Test
       run: go test -v ./...
 

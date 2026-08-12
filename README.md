@@ -7,6 +7,7 @@ Concurrent Resource Scheduler (CRS) is a high-performance, domain-agnostic Go li
 [![Go Version](https://img.shields.io/github/go-mod/go-version/phero20/concurrent-resource-scheduler)](https://github.com/phero20/concurrent-resource-scheduler/blob/main/go.mod)
 [![License](https://img.shields.io/github/license/phero20/concurrent-resource-scheduler)](https://github.com/phero20/concurrent-resource-scheduler/blob/main/LICENSE)
 [![Release](https://img.shields.io/github/v/release/phero20/concurrent-resource-scheduler)](https://github.com/phero20/concurrent-resource-scheduler/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/phero20/concurrent-resource-scheduler)](https://goreportcard.com/report/github.com/phero20/concurrent-resource-scheduler)
 
 ---
 
@@ -14,7 +15,7 @@ Concurrent Resource Scheduler (CRS) is a high-performance, domain-agnostic Go li
 1. [Introduction](#introduction)
 2. [Key Features](#key-features)
 3. [Architecture](#architecture)
-4. [Installation](#installation)
+4. [Requirements & Installation](#requirements--installation)
 5. [Quick Start](#quick-start)
 6. [Core Concepts](#core-concepts)
 7. [Usage Guide](#usage-guide)
@@ -122,12 +123,17 @@ flowchart TD
 
 ---
 
-## Installation
+## Requirements & Installation
 
-Ensure you are running Go 1.25.5 or higher.
+### Requirements
+- **Go Version**: CRS requires **Go 1.25.5** or higher due to its reliance on generics and modern `sync/atomic` primitives.
+
+### Installation
+
+Use `go get` to install the latest version:
 
 ```sh
-go get github.com/phero20/concurrent-resource-scheduler
+go get github.com/phero20/concurrent-resource-scheduler@latest
 ```
 
 ```go
@@ -441,6 +447,7 @@ You can build your own extensions by implementing `events.Observer[ID]`. Registe
 - 📘 **Documentation & API**: Browse the full library documentation in the [`docs/`](./docs) directory.
 - 📜 **Changelog**: See [CHANGELOG.md](CHANGELOG.md) for Semantic Versioning history.
 - 🤝 **Contributing**: We welcome PRs! Read [CONTRIBUTING.md](CONTRIBUTING.md) for our strict extensive test coverage and Go styling mandates.
+- 🔒 **Security**: See [SECURITY.md](SECURITY.md) for supported versions and how to report vulnerabilities privately.
 - ⚖️ **License**: This project is licensed under the MIT License. See [LICENSE](LICENSE).
 
 ### Support

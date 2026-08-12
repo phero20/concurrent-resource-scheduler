@@ -9,9 +9,16 @@ Thanks for contributing to Concurrent Resource Scheduler (CRS). This project aim
 - Keep the public API narrow and stable.
 - Prefer standard-library, dependency-light Go.
 
+## Development Setup
+
+1. **Install Go**: Ensure you have Go 1.25.5 or later installed.
+2. **Clone the repository**: `git clone https://github.com/phero20/concurrent-resource-scheduler.git`
+3. **Verify installation**: Run `go test ./...`
+
 ## Coding style
 
-- Follow idiomatic Go and run `gofmt`.
+- Follow idiomatic Go and run `gofmt -w .` before committing.
+- Run `go vet ./...` to check for common static analysis errors.
 - Avoid globals, reflection, hidden side effects, and unnecessary dependencies.
 - Do not run callbacks, I/O, external logging hooks, or application work while holding scheduler locks.
 - Treat the comparator as a restricted dependency: it must define a strict weak ordering and be pure, deterministic, thread-safe, fast, non-blocking.
@@ -30,6 +37,19 @@ The architecture is **frozen** at v1.0.0. Every implementation decision must res
 - For any shared-state change, run:
 
 ```sh
-go test ./...
-go test -race ./...
+go test -count=1 ./...
+go test -count=1 -race ./...
 ```
+
+## Pull Request Expectations
+
+- **Small and Focused**: Keep PRs single-purpose. Do not mix refactoring with feature additions.
+- **Testing**: Include tests for all new behavior or bug fixes.
+- **Documentation**: Update GoDoc comments for any changed exported APIs.
+- **CI**: Ensure all GitHub Actions checks pass before requesting a review.
+
+## Issue Reporting
+
+- Use [GitHub Issues](https://github.com/phero20/concurrent-resource-scheduler/issues) for bug reports and feature requests.
+- For bugs, please include the Go version, OS, a minimal reproducible example, and the expected vs. actual behavior.
+- For security vulnerabilities, see [SECURITY.md](SECURITY.md).

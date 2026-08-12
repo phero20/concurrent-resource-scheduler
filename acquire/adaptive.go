@@ -4,22 +4,40 @@ import (
 	"sync/atomic"
 )
 
-// AdaptiveStrategy probabilistically favors Heap Shards with fewer active resources.
+// AdaptiveStrategy selects Heap Shards using the power-of-two random choices
+// algorithm: it picks two shards at random and selects the one with fewer
+// active resources.
 //
-// Behavior:
-// It evaluates the load on all shards using the atomic ActiveCount view
-// and weights selection heavily toward the least contended shards.
+// This approach probabilistically favors less-loaded shards without scanning
+// all shards on every call (O(1) shard comparison, O(H) per call due to
+// reading active counts). It outperforms [NewRoundRobin] when resource
+// acquisition times vary significantly across shards and when active counts
+// serve as a meaningful proxy for load.
 //
-// Concurrency Guarantees:
-// Thread-safe. It does not introduce any global locks.
+// AdaptiveStrategy is well-suited for dynamic workloads where some resources
+// become temporarily unavailable (due to Exclusive acquisition, Exclude, or
+// cooldown) and others are idle.
+//
+// For static, homogeneous workloads, [NewRoundRobin] has lower overhead.
+// For heterogeneous capacity, [NewWeightedStrategy] is more predictable.
+//
+// # Concurrency
+//
+// AdaptiveStrategy is safe for concurrent use by multiple goroutines. It uses
+// a single atomic increment for its PRNG seed and makes only non-blocking
+// atomic reads of shard active counts.
 type AdaptiveStrategy struct {
 	counter atomic.Uint64
 }
 
-// NewAdaptiveStrategy creates a strategy that dynamically balances load.
+// NewAdaptiveStrategy creates a load-aware acquire strategy that uses the
+// power-of-two random choices algorithm to favor Heap Shards with fewer active
+// resources.
 //
-// Lifecycle:
-// Provided to config.AcquireStrategy during initialization.
+// Provide the returned value as [config.Config.AcquireStrategy] during
+// scheduler construction.
+//
+// The returned strategy is safe for concurrent use by multiple goroutines.
 func NewAdaptiveStrategy() *AdaptiveStrategy {
 	return &AdaptiveStrategy{}
 }

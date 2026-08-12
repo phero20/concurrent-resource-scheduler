@@ -1,3 +1,40 @@
+// Package scheduler provides the Scheduler type and all operations for the
+// Concurrent Resource Scheduler.
+//
+// # Overview
+//
+// A [Scheduler] safely manages a pool of generic resources under heavy
+// concurrent load. It uses independently-locked Heap Shards for priority
+// ordering, an O(1) lookup map for keyed operations, and a configurable
+// [acquire.AcquireStrategy] for shard selection.
+//
+// # Lifecycle
+//
+// Create a scheduler with [New], add resources with [Scheduler.Add] or
+// [Scheduler.BatchAdd], acquire them with [Scheduler.Acquire] or
+// [Scheduler.AcquireByAffinity], and terminate with [Scheduler.Shutdown].
+//
+//	sched, err := scheduler.New(cfg)
+//	if err != nil { log.Fatal(err) }
+//	defer sched.Shutdown()
+//
+//	sched.Add(myResource)
+//	res, err := sched.Acquire()
+//
+// # Concurrency
+//
+// All exported methods on [Scheduler] are safe for concurrent use by multiple
+// goroutines. The scheduler avoids a global mutex by using per-shard locks and
+// atomic primitives on the hot path.
+//
+// # Resource States
+//
+// Every resource is in exactly one of two states at any moment:
+//
+//   - ACTIVE:   present in a Heap Shard; eligible for Acquire.
+//   - INACTIVE: held in the Inactive Store; invisible to Acquire.
+//
+// State transitions are atomic relative to the owning shard's lock.
 package scheduler
 
 import (
@@ -11,19 +48,27 @@ import (
 	"github.com/phero20/concurrent-resource-scheduler/internal/lookup"
 )
 
-// Scheduler is a highly concurrent, lock-sharded priority queue for generic resources.
-// It orchestrates resource acquisition across multiple internal Heap Shards using a
-// configurable AcquireStrategy. It enforces thread-safe mutations, atomic state
-// transitions between ACTIVE and INACTIVE states, and non-blocking telemetry
-// dispatch.
+// Scheduler is a highly concurrent, lock-sharded priority queue for generic
+// resources of type T identified by keys of type ID.
 //
-// Concurrency Guarantees:
-// All exported methods are completely thread-safe. The scheduler avoids global
-// mutexes in favor of fine-grained per-shard locking and O(1) concurrent-safe maps.
+// It orchestrates resource acquisition across multiple internal Heap Shards
+// using a configurable [acquire.AcquireStrategy], enforces thread-safe
+// mutations, performs atomic ACTIVE/INACTIVE state transitions, and dispatches
+// lifecycle events to registered observers without blocking acquisition.
 //
-// Lifecycle:
-// A Scheduler is created via New() and must eventually be stopped via Shutdown()
-// to release background goroutines.
+// # Concurrency
+//
+// All exported methods are safe for concurrent use by multiple goroutines.
+// The scheduler uses fine-grained per-shard locking and an O(1) concurrent-safe
+// lookup map rather than a global mutex.
+//
+// # Lifecycle
+//
+// A Scheduler must be created via [New]. It must eventually be stopped via
+// [Scheduler.Shutdown] to release the background event-dispatcher goroutine
+// (started only when [config.Config.Observers] is non-empty).
+//
+// The zero value of Scheduler is not valid for use; always use [New].
 type Scheduler[T any, ID comparable] struct {
 	// cfg holds the validated, immutable configuration (e.g., HeapCount, KeyFunc).
 	cfg config.Config[T, ID]
@@ -83,16 +128,40 @@ func (v shardView[T, ID]) ActiveCount(shard int) int {
 	return v.s.shards[shard].Len()
 }
 
-// New creates, validates, and initializes a new Scheduler instance.
-// It applies default configuration values, validates the constraints (such as
-// positive heap counts and non-nil KeyFunc), allocates the internal shard array,
-// and starts the background event dispatcher goroutine.
+// New creates, validates, and initializes a Scheduler.
 //
-// Complexity:
-// O(H) where H is the number of Heap Shards.
+// New validates the supplied [config.Config], applies defaults, allocates
+// Heap Shards, and starts a background event-dispatcher goroutine if
+// [config.Config.Observers] is non-empty.
 //
-// Lifecycle:
-// The returned Scheduler must be terminated with Shutdown() to prevent goroutine leaks.
+// # Defaults Applied
+//
+//   - HeapCount 0 → [config.DefaultHeapCount] (1).
+//   - AcquireStrategy nil → [acquire.NewRoundRobin].
+//   - AcquirePolicy zero value → [config.Shared].
+//
+// # Errors Returned
+//
+//   - [errors.ErrInvalidHeapCount]      — invalid HeapCount.
+//   - [errors.ErrNilComparator]         — Comparator is nil.
+//   - [errors.ErrNilKeyFunc]            — KeyFunc is nil.
+//   - [errors.ErrInvalidAcquirePolicy]  — unrecognized AcquirePolicy.
+//
+// All errors are stable sentinel values testable with [errors.Is].
+//
+// # Lifecycle
+//
+// The returned Scheduler is immediately ready for use. Call
+// [Scheduler.Shutdown] when the scheduler is no longer needed to release the
+// background goroutine and mark the scheduler closed. Failing to call Shutdown
+// leaks the goroutine when Observers are registered.
+//
+// # Concurrency
+//
+// The returned *Scheduler is safe for concurrent use by multiple goroutines
+// immediately after New returns.
+//
+// Complexity: O(H) where H is the number of Heap Shards.
 func New[T any, ID comparable](cfg config.Config[T, ID]) (*Scheduler[T, ID], error) {
 	validatedCfg, err := config.Validate(cfg)
 	if err != nil {

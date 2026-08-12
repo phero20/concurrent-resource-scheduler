@@ -9,15 +9,24 @@ import (
 )
 
 // Add inserts a single resource into the scheduler.
-// It uses an internal Round Robin algorithm to assign the resource to a target
-// Heap Shard. It returns ErrDuplicateResource if the resource key already exists.
 //
-// Concurrency Guarantees:
-// Thread-safe. The Round Robin atomic counter ensures balanced distribution
-// without locking, and insertion locks only the target shard.
+// An internal Round Robin counter assigns the resource to a Heap Shard,
+// distributing resources evenly across shards without a global lock. The
+// assignment is permanent: a resource always returns to its original shard
+// after Release or Include.
 //
-// Complexity:
-// O(log N) where N is the number of resources in the target shard.
+// Add returns [errors.ErrNilResource] if res is nil. It returns
+// [errors.ErrDuplicateKey] if a resource with the same key (as returned by
+// [config.KeyFunc]) already exists in the scheduler. It returns
+// [errors.ErrSchedulerClosed] after [Scheduler.Shutdown] has been called.
+//
+// # Concurrency
+//
+// Add is safe for concurrent use by multiple goroutines. The atomic Round
+// Robin counter ensures balanced distribution and insertion locks only the
+// target shard.
+//
+// Complexity: O(log N) where N is the number of resources in the target shard.
 func (s *Scheduler[T, ID]) Add(res T) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed
@@ -53,17 +62,29 @@ func (s *Scheduler[T, ID]) Add(res T) error {
 	return nil
 }
 
-// BatchAdd atomically validates and inserts multiple resources.
-// It operates in two phases: Phase 1 strictly validates all elements (nil checks,
-// internal batch duplicates, and global registry duplicates) without modifying
-// any state. Phase 2 safely distributes the valid batch across shards.
+// BatchAdd atomically validates and inserts a slice of resources.
 //
-// Concurrency Guarantees:
-// Thread-safe. It maintains consistency by locking shards sequentially, avoiding
-// global locks. Partial insertions never occur.
+// BatchAdd operates in two distinct phases to guarantee all-or-nothing
+// insertion semantics:
 //
-// Complexity:
-// O(B * log N) where B is batch size and N is resources per shard.
+//   - Phase 1 (Validation): every resource is checked for nil values,
+//     intra-batch duplicate keys, and keys that already exist in the
+//     scheduler. No scheduler state is modified during Phase 1. If any
+//     check fails, BatchAdd returns immediately with the relevant error
+//     and the scheduler remains unchanged.
+//   - Phase 2 (Insertion): all resources are distributed across Heap Shards
+//     using the internal Round Robin counter and inserted atomically. A
+//     partial insertion never occurs.
+//
+// BatchAdd returns [errors.ErrSchedulerClosed] after [Scheduler.Shutdown] has
+// been called. It returns nil immediately if resources is empty.
+//
+// # Concurrency
+//
+// BatchAdd is safe for concurrent use by multiple goroutines. Shard locks are
+// taken one at a time during Phase 2; no global lock is held.
+//
+// Complexity: O(B × log N) where B is the batch size and N is resources per shard.
 func (s *Scheduler[T, ID]) BatchAdd(resources []T) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed

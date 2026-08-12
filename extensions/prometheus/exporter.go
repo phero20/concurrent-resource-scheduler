@@ -1,3 +1,48 @@
+// Package prometheus provides a Prometheus [prometheus.Collector] that exports
+// Concurrent Resource Scheduler metrics to the Prometheus ecosystem.
+//
+// # Overview
+//
+// The [Collector] bridges two CRS data sources into Prometheus metrics:
+//
+//   - Structural metrics ([MetricsProvider]): derived from
+//     [scheduler.Scheduler.Stats]. These are O(H) per scrape.
+//   - Throughput metrics ([TelemetryProvider]): derived from
+//     [metrics.TelemetryObserver.Snapshot]. These are O(1) per scrape.
+//
+// The telemetry provider is optional; omitting it disables all counter metrics.
+//
+// # Exported Metrics
+//
+// Gauge metrics (current values):
+//
+//	crs_heap_count           — number of Heap Shards
+//	crs_resources_total      — total resources (active + inactive)
+//	crs_resources_active     — resources currently in active Heap Shards
+//	crs_resources_inactive   — resources currently in the Inactive Store
+//	crs_heaps_empty          — shards with zero active resources
+//	crs_heaps_non_empty      — shards with at least one active resource
+//
+// Counter metrics (monotonically increasing, requires TelemetryProvider):
+//
+//	crs_events_add_total     — total Add/BatchAdd operations
+//	crs_events_acquire_total — total Acquire/AcquireByAffinity operations
+//	crs_events_release_total — total Release operations
+//	crs_events_exclude_total — total Exclude operations
+//	crs_events_include_total — total Include operations
+//	crs_events_remove_total  — total Remove operations
+//	crs_events_update_total  — total Update operations
+//
+// # Usage
+//
+//	telemetry := metrics.NewTelemetryObserver[string]()
+//	cfg := config.Config[*MyResource, string]{
+//	    Observers: []events.Observer[string]{telemetry},
+//	}
+//	sched, _ := scheduler.New(cfg)
+//
+//	collector := prometheus.NewCollector(sched, telemetry)
+//	prometheus.MustRegister(collector)
 package prometheus
 
 import (
@@ -50,14 +95,18 @@ type Collector struct {
 	updates  *prometheus.Desc
 }
 
-// NewCollector constructs a Prometheus Collector.
+// NewCollector constructs a Prometheus Collector that exports CRS metrics.
 //
-// Behavior:
-// The telemetry provider is optional. If nil, throughput metrics (adds, acquires)
-// will not be exported.
+// provider must be non-nil; pass the *[scheduler.Scheduler] directly. telemetry
+// is optional: if nil, the seven throughput counter metrics are not exported
+// (Describe still sends their descriptors; Collect omits them).
 //
-// Lifecycle:
-// The returned Collector must be registered with a prometheus.Registry.
+// The returned Collector must be registered with a prometheus.Registry or the
+// default registry before scraping begins:
+//
+//	prometheus.MustRegister(collector)
+//
+// The returned Collector is safe for concurrent use by multiple goroutines.
 func NewCollector(provider MetricsProvider, telemetry TelemetryProvider) *Collector {
 	return &Collector{
 		provider:  provider,
@@ -130,10 +179,17 @@ func NewCollector(provider MetricsProvider, telemetry TelemetryProvider) *Collec
 	}
 }
 
-// Describe sends all possible metric descriptions to the Prometheus channel.
+// Describe sends all metric descriptors to the Prometheus channel.
+// It satisfies the [prometheus.Collector] interface.
 //
-// Concurrency Guarantees:
-// Thread-safe as per the prometheus.Collector contract.
+// Describe always sends all 13 descriptors regardless of whether a
+// TelemetryProvider was supplied. Prometheus requires consistent descriptor
+// registration even when the corresponding Collect may not emit values.
+//
+// # Concurrency
+//
+// Describe is safe for concurrent use by multiple goroutines, as required
+// by the prometheus.Collector contract.
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.heapCount
 	ch <- c.totalResources
@@ -151,10 +207,19 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.updates
 }
 
-// Collect executes the metric gathering and writes to the Prometheus channel.
+// Collect gathers current metric values and sends them to the Prometheus channel.
+// It satisfies the [prometheus.Collector] interface.
 //
-// Concurrency Guarantees:
-// Thread-safe. It performs a rapid O(H) stats snapshot and an O(1) atomic telemetry read.
+// Collect performs an O(H) Stats snapshot for the gauge metrics and, if a
+// TelemetryProvider was supplied, an O(1) atomic Snapshot for the counters.
+//
+// If TelemetryProvider is nil, the seven throughput counter metrics are not
+// emitted during this scrape.
+//
+// # Concurrency
+//
+// Collect is safe for concurrent use by multiple goroutines, as required
+// by the prometheus.Collector contract.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	s := c.provider.Stats()
 

@@ -1,3 +1,14 @@
+// Package stats defines the Stats snapshot type returned by
+// [scheduler.Scheduler.Stats].
+//
+// A [Stats] value is a point-in-time, read-only snapshot of the scheduler's
+// internal bookkeeping. It is safe to read from multiple goroutines because it
+// is a plain value type containing no pointers to live scheduler state.
+//
+// Obtain a snapshot by calling Stats on a running scheduler:
+//
+//	s := sched.Stats()
+//	fmt.Println("active:", s.ActiveResources)
 package stats
 
 // Stats provides a read-only, point-in-time snapshot of scheduler state.

@@ -23,3 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `extensions/prometheus` (Prometheus exporter collector).
 - Extensive production-ready documentation and standalone examples.
 - extensive test coverage with zero detected data races under Go's race detector.
+
+### Changed
+- Renamed the internal `placement` concepts to the public `acquire` package to better reflect the strict decoupling of priority from acquisition strategies.

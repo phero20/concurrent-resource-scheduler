@@ -5,17 +5,30 @@ import (
 	"github.com/phero20/concurrent-resource-scheduler/events"
 )
 
-// Update replaces the value of an existing resource and recalculates its priority.
-// If the resource is ACTIVE, it locks the owning shard and triggers a heap fix to
-// restore the priority queue invariants. If INACTIVE, it safely updates the value
-// in the Inactive Store.
+// Update replaces the stored value of an existing resource and recalculates its
+// priority position within the heap.
 //
-// Concurrency Guarantees:
-// Thread-safe. It identifies the resource location via O(1) concurrent-safe lookup and
-// strictly takes either the target shard lock or the Inactive Store lock.
+// The caller supplies the full replacement resource. The scheduler derives the
+// key using [config.KeyFunc] and locates the resource in the lookup map. If
+// the resource is ACTIVE, the owning shard is locked, the value is replaced,
+// and heap.Fix restores the priority-queue invariant in O(log N). If the
+// resource is INACTIVE, the value is replaced in the Inactive Store in O(1)
+// without touching any Heap Shard.
 //
-// Complexity:
-// O(log N) for ACTIVE resources, O(1) for INACTIVE resources.
+// Resource identity (the key) is immutable. If the replacement resource
+// produces a different key from the stored resource, Update returns
+// [errors.ErrResourceNotFound]. To change a key, call [Scheduler.Remove]
+// followed by [Scheduler.Add].
+//
+// Update returns [errors.ErrNilResource] if res is nil.
+// It returns [errors.ErrResourceNotFound] if the key does not exist.
+// It returns [errors.ErrSchedulerClosed] after [Scheduler.Shutdown].
+//
+// # Concurrency
+//
+// Update is safe for concurrent use by multiple goroutines.
+//
+// Complexity: O(log N) for ACTIVE resources; O(1) for INACTIVE resources.
 func (s *Scheduler[T, ID]) Update(res T) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed
@@ -53,16 +66,24 @@ func (s *Scheduler[T, ID]) Update(res T) error {
 	return nil
 }
 
-// Exclude manually moves an ACTIVE resource to the Inactive Store.
-// This is typically used to temporarily remove a faulty resource from circulation
-// (e.g., during a cooldown period).
+// Exclude manually moves an ACTIVE resource to the Inactive Store, making it
+// invisible to [Scheduler.Acquire] until [Scheduler.Include] is called.
 //
-// Concurrency Guarantees:
-// Thread-safe. It locks the owning shard, removes the node, and places it into
-// the locked Inactive Store.
+// Typical use cases include temporarily removing a faulty or rate-limited
+// resource from circulation (e.g., during a cooldown period).
 //
-// Complexity:
-// O(log N) where N is the number of resources in the target shard.
+// Exclude is not idempotent: calling Exclude on an already-INACTIVE resource
+// returns [errors.ErrResourceNotActive] without modifying scheduler state.
+//
+// Exclude returns [errors.ErrResourceNotFound] if the key does not exist.
+// It returns [errors.ErrSchedulerClosed] after [Scheduler.Shutdown].
+//
+// # Concurrency
+//
+// Exclude is safe for concurrent use by multiple goroutines. It locks only
+// the owning Heap Shard.
+//
+// Complexity: O(log N) where N is the number of resources in the target shard.
 func (s *Scheduler[T, ID]) Exclude(id ID) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed
@@ -96,16 +117,21 @@ func (s *Scheduler[T, ID]) Exclude(id ID) error {
 	return nil
 }
 
-// Include restores a previously excluded resource back to its ACTIVE state.
-// The resource is returned to its original native Heap Shard and becomes available
-// for acquisition.
+// Include restores a previously excluded (or exclusively-acquired) resource to
+// ACTIVE state in its original Heap Shard, making it eligible for acquisition.
 //
-// Concurrency Guarantees:
-// Thread-safe. It atomically moves the node from the Inactive Store into the
-// corresponding locked Heap Shard.
+// Include is not idempotent: calling Include on an already-ACTIVE resource
+// returns [errors.ErrResourceNotInactive] without modifying scheduler state.
 //
-// Complexity:
-// O(log N) where N is the number of resources in the target shard.
+// Include returns [errors.ErrResourceNotFound] if the key does not exist.
+// It returns [errors.ErrSchedulerClosed] after [Scheduler.Shutdown].
+//
+// # Concurrency
+//
+// Include is safe for concurrent use by multiple goroutines. It locks only
+// the target Heap Shard.
+//
+// Complexity: O(log N) where N is the number of resources in the target shard.
 func (s *Scheduler[T, ID]) Include(id ID) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed
@@ -139,16 +165,25 @@ func (s *Scheduler[T, ID]) Include(id ID) error {
 	return nil
 }
 
-// Remove permanently deletes a resource from the scheduler.
-// It works seamlessly whether the resource is ACTIVE in a Heap Shard or
-// INACTIVE in the Inactive Store, removing all global lookup references.
+// Remove permanently deletes a resource from the scheduler, regardless of
+// whether it is currently ACTIVE or INACTIVE.
 //
-// Concurrency Guarantees:
-// Thread-safe. It locates the node and cleanly locks either the target shard
-// or the Inactive Store to perform the removal.
+// After Remove, the resource's key is deregistered from the Lookup Map. Any
+// subsequent operation referencing the key returns [errors.ErrResourceNotFound].
+// Resources held exclusively by a caller (acquired but not yet released) are
+// marked deleted; a subsequent [Scheduler.Release] for that key returns
+// [errors.ErrResourceNotFound].
 //
-// Complexity:
-// O(log N) for ACTIVE resources, O(1) for INACTIVE resources.
+// Remove returns [errors.ErrResourceNotFound] if no resource with the given
+// key exists. It returns [errors.ErrSchedulerClosed] after [Scheduler.Shutdown].
+//
+// # Concurrency
+//
+// Remove is safe for concurrent use by multiple goroutines. It locks only
+// the owning Heap Shard (not a global lock), so removal does not block
+// concurrent acquisitions on other shards.
+//
+// Complexity: O(log N) for ACTIVE resources; O(1) for INACTIVE resources.
 func (s *Scheduler[T, ID]) Remove(id ID) error {
 	if s.closed.Load() {
 		return errors.ErrSchedulerClosed

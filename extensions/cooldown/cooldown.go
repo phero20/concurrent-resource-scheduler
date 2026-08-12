@@ -1,3 +1,37 @@
+// Package cooldown provides an automatic post-release cooldown extension for
+// the Concurrent Resource Scheduler.
+//
+// # What It Does
+//
+// The cooldown extension automatically moves a resource to the Inactive Store
+// for a configurable duration after it is released under the
+// [config.Exclusive] AcquirePolicy. This is useful for implementing back-off
+// strategies, rate limiting, or resting periods after a resource is used.
+//
+// # How It Works
+//
+// [Manager] implements [events.Observer]. When registered in
+// [config.Config.Observers], it intercepts [events.EventRelease] notifications
+// and calls [Scheduler.Exclude] on the released resource, then schedules
+// [Scheduler.Include] after the configured duration using [time.AfterFunc].
+//
+// # Eventual-Consistency Window
+//
+// Cooldown is asynchronous. There is a small window between the Release call
+// completing and the corresponding Exclude taking effect. During this window
+// the resource is visible to [scheduler.Scheduler.Acquire]. Applications that
+// require strict synchronous cooldown enforcement should implement the logic
+// inside the scheduler comparator or before calling Release rather than
+// relying on this observer.
+//
+// # Usage
+//
+//	manager := cooldown.NewManager(sched, 5*time.Second)
+//	cfg := config.Config[*MyResource, string]{
+//	    // ... other fields ...
+//	    Observers: []events.Observer[string]{manager},
+//	}
+//	sched, _ := scheduler.New(cfg)
 package cooldown
 
 import (
@@ -7,45 +41,58 @@ import (
 	"github.com/phero20/concurrent-resource-scheduler/events"
 )
 
-// LifecycleController abstracts the scheduler's manual inclusion/exclusion operations.
+// LifecycleController abstracts the scheduler operations required by the
+// cooldown extension.
 //
-// Behavior:
-// This interface allows the Cooldown Manager to manipulate the Inactive Store
-// without introducing a circular package dependency on the scheduler core.
+// [*scheduler.Scheduler] satisfies this interface, allowing Manager to call
+// Exclude and Include without introducing a package import cycle.
 type LifecycleController[ID comparable] interface {
+	// Exclude moves the resource with the given key to the Inactive Store.
 	Exclude(id ID) error
+	// Include restores the resource with the given key to ACTIVE state.
 	Include(id ID) error
 }
 
-// Manager is an events.Observer that automatically places released resources
+// Manager is an [events.Observer] that automatically places released resources
 // into a temporary cooldown state.
 //
-// Important:
-// Cooldown is implemented as an asynchronous Observer. Resources become
-// excluded asynchronously after Release(). There exists a very small
-// eventual-consistency window between Release() and Exclude(). This is
-// an intentional tradeoff to preserve the scheduler's non-blocking event
-// architecture. Applications requiring strict synchronous cooldown
-// enforcement should implement cooldown inside scheduler logic instead
-// of using the observer extension.
+// When a resource is released under [config.Exclusive] policy, Manager
+// intercepts the [events.EventRelease] event, calls [LifecycleController.Exclude]
+// to move the resource to the Inactive Store, and schedules
+// [LifecycleController.Include] after the configured duration.
 //
-// Behavior:
-// When a resource is released, the Manager intercepts the event, calls Exclude(),
-// and sets a timer to call Include() after the specified duration.
+// At most one active cooldown is tracked per resource. If a resource is
+// released while already cooling down (e.g., it was re-included early and
+// then acquired and released again), the second cooldown replaces the first.
 //
-// Concurrency Guarantees:
-// Thread-safe and non-blocking. It delegates delays to time.AfterFunc.
+// # Eventual Consistency
+//
+// Cooldown is applied asynchronously. See the package documentation for the
+// implications of the eventual-consistency window.
+//
+// # Concurrency
+//
+// Manager is safe for concurrent use by multiple goroutines. It delegates
+// timer callbacks to [time.AfterFunc] and uses a [sync.Map] for tracking
+// active cooldowns without introducing locks in OnEvent.
 type Manager[ID comparable] struct {
 	controller LifecycleController[ID]
 	duration   time.Duration
 	active     sync.Map
 }
 
-// NewManager initializes a Cooldown Manager with the provided controller and duration.
+// NewManager initializes a cooldown Manager.
 //
-// Lifecycle:
-// The returned Manager should be registered in the config.Observers slice
-// during scheduler initialization.
+// controller is the [LifecycleController] to call for Exclude and Include;
+// pass the *[scheduler.Scheduler] directly. duration is the cooldown period
+// applied after each release; it must be positive. A zero or negative duration
+// causes Include to be scheduled immediately, effectively disabling the
+// cooldown.
+//
+// The returned Manager must be registered in [config.Config.Observers] before
+// [scheduler.New] is called.
+//
+// The returned Manager is safe for concurrent use by multiple goroutines.
 func NewManager[ID comparable](controller LifecycleController[ID], duration time.Duration) *Manager[ID] {
 	return &Manager[ID]{
 		controller: controller,
@@ -53,13 +100,15 @@ func NewManager[ID comparable](controller LifecycleController[ID], duration time
 	}
 }
 
-// OnEvent processes scheduler events asynchronously.
+// OnEvent processes scheduler events and triggers a cooldown on EventRelease.
 //
-// Behavior:
-// If the event is EventRelease, it triggers a cooldown for the resource.
+// OnEvent is non-blocking: it spawns a goroutine for the Exclude call and
+// uses [time.AfterFunc] for the delayed Include, satisfying the
+// [events.Observer] non-blocking contract.
 //
-// Concurrency Guarantees:
-// Strictly non-blocking. It fires goroutines for timer callbacks.
+// # Concurrency
+//
+// OnEvent is safe for concurrent use by multiple goroutines.
 func (m *Manager[ID]) OnEvent(e events.Event[ID]) {
 	// We only apply cooldowns when a resource is returned to the pool.
 	if e.Type != events.EventRelease {
