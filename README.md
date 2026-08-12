@@ -7,7 +7,6 @@ Concurrent Resource Scheduler (CRS) is a high-performance, domain-agnostic Go li
 [![Go Version](https://img.shields.io/github/go-mod/go-version/phero20/concurrent-resource-scheduler)](https://github.com/phero20/concurrent-resource-scheduler/blob/main/go.mod)
 [![License](https://img.shields.io/github/license/phero20/concurrent-resource-scheduler)](https://github.com/phero20/concurrent-resource-scheduler/blob/main/LICENSE)
 [![Release](https://img.shields.io/github/v/release/phero20/concurrent-resource-scheduler)](https://github.com/phero20/concurrent-resource-scheduler/releases)
-[![Go Report Card](https://goreportcard.com/badge/github.com/phero20/concurrent-resource-scheduler)](https://goreportcard.com/report/github.com/phero20/concurrent-resource-scheduler)
 
 ---
 
@@ -468,4 +467,4 @@ Special thanks to the open-source Go community for pioneering robust concurrent 
 
 ---
 
-> **Concurrent Resource Scheduler** — Built with unwavering production-grade rigor. race-detector validation, and 94–100% package coverage.
+> **Concurrent Resource Scheduler** — Built with unwavering production-grade rigor, race-detector validation, and 94–100% package coverage.
