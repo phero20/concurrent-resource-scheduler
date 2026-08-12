@@ -11,9 +11,15 @@ Thanks for contributing to Concurrent Resource Scheduler (CRS). This project aim
 
 ## Development Setup
 
-1. **Install Go**: Ensure you have Go 1.25.5 or later installed.
+1. **Install Go**: Ensure you have Go 1.22 or later installed (Go 1.25 is required to work on the Prometheus extension).
 2. **Clone the repository**: `git clone https://github.com/phero20/concurrent-resource-scheduler.git`
-3. **Verify installation**: Run `go test ./...`
+3. **Verify installation**: Run `go test ./...` in the root and `go test ./...` in `extensions/prometheus`.
+
+## Multi-Module Releasing
+
+This repository contains multiple Go modules. To cut a new release (e.g., `v1.2.0`), you must create and push two separate Git tags:
+- `v1.2.0` (for the core module)
+- `extensions/prometheus/v1.2.0` (for the Prometheus extension module)
 
 ## Coding style
 

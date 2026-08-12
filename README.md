@@ -54,7 +54,7 @@ For an extensive high-level perspective, see [`docs/OVERVIEW.md`](./docs/OVERVIE
 
 | Feature | Description |
 |---------|-------------|
-| **Generic API** | Built heavily upon Go 1.25.5+ Generics (`T any, ID comparable`). The scheduler is completely ignorant of your domain logic. |
+| **Generic API** | Built heavily upon Go 1.22+ Generics (`T any, ID comparable`). The scheduler is completely ignorant of your domain logic. |
 | **Concurrent-Safe** | Thread-safe architecture designed for high concurrency and safe for concurrent use from many goroutines. |
 | **Lock Architecture** | No global heap mutex exists. Mutations acquire only the necessary shard-local lock. |
 | **Multiple Heap Shards** | Configurable via `HeapCount`. Partitions the priority queue to scale concurrent operations across shards. |
@@ -126,14 +126,21 @@ flowchart TD
 ## Requirements & Installation
 
 ### Requirements
-- **Go Version**: CRS requires **Go 1.25.5** or higher due to its reliance on generics and modern `sync/atomic` primitives.
+- **Core Scheduler**: Requires **Go 1.22** or higher.
+- **Prometheus Extension**: The optional metrics exporter requires **Go 1.25** or higher due to its `client_golang` dependency.
 
 ### Installation
 
-Use `go get` to install the latest version:
+Install the core library (zero third-party dependencies):
 
 ```sh
 go get github.com/phero20/concurrent-resource-scheduler@latest
+```
+
+If you plan to use the optional Prometheus metrics exporter, install the extension separately:
+
+```sh
+go get github.com/phero20/concurrent-resource-scheduler/extensions/prometheus@latest
 ```
 
 ```go
@@ -375,14 +382,15 @@ We provide isolated, production-grade, compilable examples covering all major fe
 - **[`exclusive`](./examples/exclusive)** - Strict pop-and-lock capacity protection.
 - **[`affinity`](./examples/affinity)** - Deterministic sticky session routing.
 - **[`cooldown`](./examples/cooldown)** - Applying the Cooldown Manager observer.
-- **[`prometheus`](./examples/prometheus)** - Integrating telemetry and Prom collectors.
+- **[`prometheus`](./extensions/prometheus/example)** - Integrating telemetry and Prom collectors.
 
 ---
 
 ## FAQ
 
-**1. Can I use CRS without Generics?**
-No. CRS requires Go 1.25.5+ and uses Go generics for compile-time type safety without requiring `interface{}`-based resource casting.
+**1. Does this library use `interface{}` internally?**
+
+No. CRS requires Go 1.22+ and uses Go generics for compile-time type safety without requiring `interface{}`-based resource casting.
 
 **2. What happens if two resources have the same priority?**
 The internal heap provides no tie-breaker guarantee. Order will be arbitrary.
