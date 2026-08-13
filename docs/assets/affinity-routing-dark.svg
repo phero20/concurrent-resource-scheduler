@@ -1,0 +1,39 @@
+<svg width="900" height="220" viewBox="0 0 900 220" xmlns="http://www.w3.org/2000/svg" role="img" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+  <title>Affinity routing via consistent hashing</title>
+  <desc>A session key is hashed with FNV-1a and located on a consistent hash ring via binary search, which deterministically maps it to the same heap shard on every call.</desc>
+
+  <defs>
+    <marker id="arrow3d" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1L9 5L1 9" fill="none" stroke="#8b949e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="900" height="220" fill="#0d1117"/>
+
+  <rect x="20" y="80" width="140" height="56" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+  <text x="90" y="104" text-anchor="middle" font-size="12.5" font-weight="600" fill="#e6edf3">Session key</text>
+  <text x="90" y="122" text-anchor="middle" font-size="10.5" fill="#8b949e">"user_1"</text>
+
+  <line x1="160" y1="108" x2="200" y2="108" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrow3d)"/>
+  <text x="163" y="98" font-size="10" fill="#8b949e">FNV-1a</text>
+
+  <rect x="202" y="80" width="140" height="56" rx="8" fill="#122148" stroke="#3b5aa8" stroke-width="1"/>
+  <text x="272" y="104" text-anchor="middle" font-size="12.5" font-weight="600" fill="#8ab4f8">64-bit digest</text>
+  <text x="272" y="122" text-anchor="middle" font-size="10.5" fill="#a9c6f5">deterministic</text>
+
+  <line x1="342" y1="108" x2="410" y2="108" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrow3d)"/>
+  <text x="345" y="98" font-size="10" fill="#8b949e">binary search</text>
+
+  <rect x="412" y="80" width="180" height="56" rx="8" fill="#3a2410" stroke="#8a5a22" stroke-width="1"/>
+  <text x="502" y="104" text-anchor="middle" font-size="12.5" font-weight="600" fill="#f0b862">Hash ring</text>
+  <text x="502" y="122" text-anchor="middle" font-size="10.5" fill="#e3c48f">500 virtual nodes / shard</text>
+
+  <line x1="592" y1="108" x2="650" y2="108" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrow3d)"/>
+  <text x="595" y="98" font-size="10" fill="#8b949e">resolves to</text>
+
+  <rect x="652" y="80" width="160" height="56" rx="8" fill="#0f2e1c" stroke="#2e7d4f" stroke-width="1"/>
+  <text x="732" y="104" text-anchor="middle" font-size="12.5" font-weight="600" fill="#6fd39a">Heap shard 3</text>
+  <text x="732" y="122" text-anchor="middle" font-size="10" fill="#8fcdad">same key, same shard</text>
+
+  <text x="20" y="180" font-size="11" fill="#8b949e">Used exclusively by AcquireByAffinity for deterministic sticky-session routing.</text>
+</svg>

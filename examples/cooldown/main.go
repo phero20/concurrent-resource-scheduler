@@ -69,9 +69,12 @@ func main() {
 	sched.Release(res.ID)
 	fmt.Println("Released worker-1. It is now cooling down...")
 
-	// 5. Try to acquire immediately (will fail).
+	// 5. Wait a tiny bit for the async event dispatcher to process the Exclude.
+	time.Sleep(5 * time.Millisecond)
+
+	// 6. Try to acquire (will fail because it's cooling down).
 	_, err = sched.Acquire()
-	fmt.Printf("Immediate acquire error: %v\n", err)
+	fmt.Printf("Acquire during cooldown error: %v\n", err)
 
 	// 6. Wait for cooldown.
 	time.Sleep(60 * time.Millisecond)

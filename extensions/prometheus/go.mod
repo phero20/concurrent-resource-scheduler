@@ -3,7 +3,7 @@ module github.com/phero20/concurrent-resource-scheduler/extensions/prometheus
 go 1.25.0
 
 require (
-	github.com/phero20/concurrent-resource-scheduler v1.2.0
+	github.com/phero20/concurrent-resource-scheduler v1.2.3
 	github.com/prometheus/client_golang v1.24.1
 )
 

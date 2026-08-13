@@ -57,6 +57,6 @@ type Observer[ID comparable] interface {
 Available events: `EventAdd`, `EventAcquire`, `EventRelease`, `EventExclude`, `EventInclude`, `EventRemove`, `EventUpdate`.
 
 **Included Extensions:**
-- `extensions/cooldown`: `NewManager(scheduler, duration)`
+- `extensions/cooldown`: `NewManager(controller, duration)` (where `controller` implements `LifecycleController`)
 - `extensions/metrics`: `NewTelemetryObserver()`
 - `extensions/prometheus`: `NewCollector(scheduler, telemetry)`

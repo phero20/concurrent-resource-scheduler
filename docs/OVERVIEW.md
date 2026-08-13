@@ -82,7 +82,8 @@ The scheduler acts as a zero-dependency kernel. It exposes a non-blocking `event
 | `Add` / `BatchAdd` | O(log N) | Single Shard Lock |
 | `Acquire` (Shared) | O(Heaps) | Single Shard Lock (Peek) |
 | `Acquire` (Exclusive) | O(log N) + O(Heaps) | Single Shard Lock (Pop) |
-| `AcquireByAffinity` | O(log N) + O(log VNodes) | Single Shard Lock (Pop) |
+| `AcquireByAffinity` (Shared) | O(log VNodes) | Single Shard Lock (Peek) |
+| `AcquireByAffinity` (Exclusive) | O(log N) + O(log VNodes) | Single Shard Lock (Pop) |
 | `Release` | O(log N) | Single Shard Lock (Push) |
 | `Update` | O(log N) / O(1) | Single Shard Lock (Fix) |
 | `Remove` | O(log N) / O(1) | Single Shard Lock (Remove) |

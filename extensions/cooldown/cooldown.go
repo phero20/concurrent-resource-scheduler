@@ -26,12 +26,15 @@
 //
 // # Usage
 //
-//	manager := cooldown.NewManager(sched, 5*time.Second)
+//	// Create a wrapper to break the initialization cycle
+//	ctrl := &myControllerWrapper{}
+//	manager := cooldown.NewManager[string](ctrl, 5*time.Second)
+//
 //	cfg := config.Config[*MyResource, string]{
-//	    // ... other fields ...
 //	    Observers: []events.Observer[string]{manager},
 //	}
 //	sched, _ := scheduler.New(cfg)
+//	ctrl.scheduler = sched // Wire the controller
 package cooldown
 
 import (
